@@ -1,7 +1,7 @@
 package sdk
 
 import (
-	"github.com/prometheus/common/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type MSdkOption struct {
