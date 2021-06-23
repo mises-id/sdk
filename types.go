@@ -1,5 +1,14 @@
 package sdk
 
+const DefaultEndpoint string = "http://localhost:1317"
+const DefaultChainID string = "mises"
+const AddressPrefix string = "mises"
+
+const ErrorInvalidLeaseTime string = "Invalid lease time"
+const ErrorKeyIsRequired string = "Key is required"
+const ErrorValueIsRequired string = "Value is required"
+const ErrorKeyFormat string = "Key format error"
+
 type MSdk interface {
 	AppMgr() (MAppMgr, error)
 	UserMgr() (MUserMgr, error)

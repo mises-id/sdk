@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-const ErrorInvalidLeaseTime = "Invalid lease time"
-const ErrorKeyIsRequired string = "Key is required"
-const ErrorValueIsRequired string = "Value is required"
-const ErrorKeyFormat string = "Key format error"
-
 func sanitizeString(s string) string {
 	re := regexp.MustCompile(`[&<>]`)
 	z := re.ReplaceAllStringFunc(s, sanitizeStringToken)

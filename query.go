@@ -15,7 +15,7 @@ type ReadResponse struct {
 	Result *ReadResponseResult `json:"result"`
 }
 
-func (ctx *MisesAgent) Read(key string) (string, error) {
+func (ctx *misesAgent) Read(key string) (string, error) {
 	if key == "" {
 		return "", fmt.Errorf(ErrorKeyIsRequired)
 	}
@@ -36,7 +36,7 @@ func (ctx *MisesAgent) Read(key string) (string, error) {
 	return res.Result.Value, nil
 }
 
-func (ctx *MisesAgent) ProvenRead(key string) (string, error) {
+func (ctx *misesAgent) ProvenRead(key string) (string, error) {
 	if key == "" {
 		return "", fmt.Errorf(ErrorKeyIsRequired)
 	}
@@ -80,7 +80,7 @@ type AccountResponse struct {
 	Result *AccountResponseResult `json:"result"`
 }
 
-func (ctx *MisesAgent) Account() (*Account, error) {
+func (ctx *misesAgent) Account() (*Account, error) {
 	res := &AccountResponse{}
 
 	body, err := ctx.APIQuery("/auth/accounts/" + ctx.address)
@@ -105,7 +105,7 @@ type VersionResponseApplicationVersion struct {
 	Version string `json:"version"`
 }
 
-func (ctx *MisesAgent) Version() (string, error) {
+func (ctx *misesAgent) Version() (string, error) {
 	body, err := ctx.APIQuery("/node_info")
 	if err != nil {
 		return "", err

@@ -5,12 +5,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-const DEFAULT_ENDPOINT string = "http://localhost:1317"
-const DEFAULT_CHAIN_ID string = "mises"
-const HD_PATH string = "m/44'/118'/0'/0/0"
-const ADDRESS_PREFIX string = "mises"
-
-type MisesAgent struct {
+type misesAgent struct {
 	MAgent
 	address          string
 	account          *Account
@@ -18,18 +13,18 @@ type MisesAgent struct {
 	privateKey       *tmsecp256k1.PrivKey
 	broadcastRetries int
 	transactions     chan *Transaction
-	chainId          string
+	chainID          string
 	endpoint         string
 	uuid             string
 	Debug            bool
 }
 
-func (ctx *MisesAgent) setupLogger() {
+func (ctx *misesAgent) setupLogger() {
 	ctx.logger = log.NewNopLogger()
 }
 
 // Fetch the address account info (`number` and `sequence` to be used later)
-func (ctx *MisesAgent) setAccount() error {
+func (ctx *misesAgent) setAccount() error {
 	if account, err := ctx.Account(); err != nil {
 		return err
 	} else {
@@ -38,21 +33,21 @@ func (ctx *MisesAgent) setAccount() error {
 	}
 }
 
-func (ctx *MisesAgent) processTransactions() {
+func (ctx *misesAgent) processTransactions() {
 	for txn := range ctx.transactions {
 		// ctx.Infof("processing transaction(%+v)", txn)
-		ctx.ProcessTransaction(txn)
+		ctx.processTransaction(txn)
 	}
 }
 
-func newMisesAgent(chain_id string, seed *MisesKeySeed) (*MisesAgent, error) {
+func newMisesAgent(chainID string, seed *misesKeySeed) (*misesAgent, error) {
 
-	ctx := &MisesAgent{
-		chainId: chain_id,
+	ctx := &misesAgent{
+		chainID: chainID,
 	}
 
 	ctx.setupLogger()
-	pkey, err := seed.genPrivateKey()
+	pkey, err := seed.getPrivateKey()
 	// Generate private key from mnemonic
 	if err != nil {
 		return nil, err

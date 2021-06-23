@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-type Test struct {
-	SDK    *MisesSdk
-	Agent  *MisesAgent
+type test struct {
+	SDK    *misesSdk
+	Agent  *misesAgent
 	Key1   string
 	Key2   string
 	Key3   string
@@ -17,15 +17,15 @@ type Test struct {
 	Value3 string
 }
 
-func (ctx *Test) TestSetUp() error {
-	SetupLogging()
-	LoadEnv()
+func (ctx *test) testSetUp() error {
+	setupLogging()
+	loadEnv()
 
-	c, err := NewTestSDK()
+	c, err := newTestSDK()
 	if err != nil {
 		return err
 	} else {
-		ctx.SDK = c.(*MisesSdk)
+		ctx.SDK = c.(*misesSdk)
 	}
 
 	ctx.Key1 = strconv.FormatInt(100+time.Now().Unix(), 10)
@@ -39,11 +39,11 @@ func (ctx *Test) TestSetUp() error {
 	return nil
 }
 
-func (ctx *Test) TestTearDown() error {
+func (ctx *test) testTearDown() error {
 	return nil
 }
 
-func NewTestSDK() (MSdk, error) {
+func newTestSDK() (MSdk, error) {
 	debug := false
 	if d, err := strconv.ParseBool(os.Getenv("DEBUG")); err == nil {
 		debug = d
@@ -51,7 +51,7 @@ func NewTestSDK() (MSdk, error) {
 
 	// create client
 	options := &MSdkOption{
-		ChainId: os.Getenv("CHAIN_ID"),
+		ChainID: os.Getenv("CHAIN_ID"),
 		Debug:   debug,
 	}
 	ctx, err := NewMSdk(options)
@@ -62,18 +62,18 @@ func NewTestSDK() (MSdk, error) {
 	return ctx, nil
 }
 
-func SetupLogging() {
+func setupLogging() {
 }
 
-func LoadEnv() {
+func loadEnv() {
 }
 
-func TestGasInfo() *GasInfo {
+func testGasInfo() *GasInfo {
 	return &GasInfo{
 		MaxFee: 4000001,
 	}
 }
 
-func TestAddress() string {
+func testAddress() string {
 	return os.Getenv("ADDRESS")
 }

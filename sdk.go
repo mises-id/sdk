@@ -5,26 +5,26 @@ import (
 )
 
 type MSdkOption struct {
-	ChainId string
+	ChainID string
 	Debug   bool
 }
 
-type MisesSdk struct {
+type misesSdk struct {
 	MSdk
 	options *MSdkOption
 	logger  log.Logger
 }
 
-func (ctx *MisesSdk) setupLogger() {
+func (ctx *misesSdk) setupLogger() {
 	ctx.logger = log.NewNopLogger()
 }
 
 func NewMSdk(options *MSdkOption) (MSdk, error) {
-	if options.ChainId == "" {
-		options.ChainId = DEFAULT_CHAIN_ID
+	if options.ChainID == "" {
+		options.ChainID = DefaultChainID
 	}
 
-	ctx := &MisesSdk{
+	ctx := &misesSdk{
 		options: options,
 	}
 

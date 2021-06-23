@@ -9,11 +9,11 @@ import (
 func TestAccount(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx := &Test{}
-	if err := ctx.TestSetUp(); err != nil {
+	ctx := &test{}
+	if err := ctx.testSetUp(); err != nil {
 		t.Fatalf("%s", err)
 	}
-	defer ctx.TestTearDown()
+	defer ctx.testTearDown()
 
 	if account, err := ctx.Agent.Account(); err != nil {
 		t.Fatalf("%s", err)
@@ -26,11 +26,11 @@ func TestAccount(t *testing.T) {
 func TestVersion(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx := &Test{}
-	if err := ctx.TestSetUp(); err != nil {
+	ctx := &test{}
+	if err := ctx.testSetUp(); err != nil {
 		t.Fatalf("%s", err)
 	}
-	defer ctx.TestTearDown()
+	defer ctx.testTearDown()
 
 	if v, err := ctx.Agent.Version(); err != nil {
 		t.Fatalf("%s", err)

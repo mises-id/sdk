@@ -8,10 +8,13 @@ import (
 
 func TestRequiresMnemonic(t *testing.T) {
 	assert := assert.New(t)
-	options := &MSdkOption{}
-	sdk, _ := NewMSdk(options)
-	seed, _ := sdk.RandomSeed()
-	if _, err := newMisesAgent("", seed.(*MisesKeySeed)); err == nil {
+	ctx := &test{}
+	if err := ctx.testSetUp(); err != nil {
+		t.Fatalf("%s", err)
+	}
+	defer ctx.testTearDown()
+	seed, _ := ctx.SDK.RandomSeed()
+	if _, err := newMisesAgent("", seed.(*misesKeySeed)); err == nil {
 		t.Fatalf("mnemonic requirement was not validated")
 	} else {
 		assert.Equal(err.Error(), "mnemonic is required")

@@ -178,7 +178,7 @@ type TransactionBroadcastPayload struct {
 
 type TransactionBroadcastPayloadSignPayload struct {
 	AccountNumber string            `json:"account_number"`
-	ChainId       string            `json:"chain_id"`
+	ChainID       string            `json:"chain_id"`
 	Fee           *TransactionFee   `json:"fee"`
 	Memo          string            `json:"memo"`
 	Msgs          []*TransactionMsg `json:"msgs"`
@@ -187,7 +187,7 @@ type TransactionBroadcastPayloadSignPayload struct {
 
 //
 
-func (ctx *MisesAgent) APIQuery(endpoint string) ([]byte, error) {
+func (ctx *misesAgent) APIQuery(endpoint string) ([]byte, error) {
 	url := ctx.endpoint + endpoint
 
 	ctx.Infof("get %s", url)
@@ -203,7 +203,7 @@ func (ctx *MisesAgent) APIQuery(endpoint string) ([]byte, error) {
 	return body, err
 }
 
-func (ctx *MisesAgent) APIMutate(method string, endpoint string, payload []byte) ([]byte, error) {
+func (ctx *misesAgent) APIMutate(method string, endpoint string, payload []byte) ([]byte, error) {
 	url := ctx.endpoint + endpoint
 
 	ctx.Infof("post %s", url)
@@ -223,7 +223,7 @@ func (ctx *MisesAgent) APIMutate(method string, endpoint string, payload []byte)
 	return body, err
 }
 
-func (ctx *MisesAgent) SendTransaction(txn *Transaction) ([]byte, error) {
+func (ctx *misesAgent) SendTransaction(txn *Transaction) ([]byte, error) {
 	txn.done = make(chan bool, 1)
 	ctx.transactions <- txn
 	done := <-txn.done
@@ -236,7 +236,7 @@ func (ctx *MisesAgent) SendTransaction(txn *Transaction) ([]byte, error) {
 	return txn.result, txn.err
 }
 
-func (ctx *MisesAgent) ProcessTransaction(txn *Transaction) {
+func (ctx *misesAgent) processTransaction(txn *Transaction) {
 	txn.broadcastRetries = 0
 
 	var result []byte
@@ -252,11 +252,11 @@ func (ctx *MisesAgent) ProcessTransaction(txn *Transaction) {
 }
 
 // Get required min gas
-func (ctx *MisesAgent) ValidateTransaction(txn *Transaction) (*TransactionBroadcastPayload, error) {
+func (ctx *misesAgent) ValidateTransaction(txn *Transaction) (*TransactionBroadcastPayload, error) {
 	req := &TransactionValidateRequest{
 		BaseReq: &TransactionValidateRequestBaseReq{
 			From:    ctx.address,
-			ChainId: ctx.chainId,
+			ChainId: ctx.chainID,
 		},
 		UUID:      ctx.uuid,
 		Key:       txn.Key,
@@ -289,7 +289,7 @@ func (ctx *MisesAgent) ValidateTransaction(txn *Transaction) (*TransactionBroadc
 	return res.Value, nil
 }
 
-func (ctx *MisesAgent) BroadcastTransaction(txn *TransactionBroadcastPayload, gasInfo *GasInfo) ([]byte, error) {
+func (ctx *misesAgent) BroadcastTransaction(txn *TransactionBroadcastPayload, gasInfo *GasInfo) ([]byte, error) {
 	// Set memo
 	txn.Memo = makeRandomString(32)
 
@@ -389,10 +389,10 @@ func (ctx *MisesAgent) BroadcastTransaction(txn *TransactionBroadcastPayload, ga
 	return nil, fmt.Errorf("%s", res.RawLog)
 }
 
-func (ctx *MisesAgent) SignTransaction(txn *TransactionBroadcastPayload) (string, error) {
+func (ctx *misesAgent) SignTransaction(txn *TransactionBroadcastPayload) (string, error) {
 	payload := &TransactionBroadcastPayloadSignPayload{
 		AccountNumber: strconv.Itoa(ctx.account.AccountNumber),
-		ChainId:       ctx.chainId,
+		ChainID:       ctx.chainID,
 		Sequence:      strconv.Itoa(ctx.account.Sequence),
 		Memo:          txn.Memo,
 		Fee:           txn.Fee,

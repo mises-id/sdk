@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func (ctx *MisesAgent) Create(key string, value string, gasInfo *GasInfo, leaseInfo *LeaseInfo) error {
+func (ctx *misesAgent) Create(key string, value string, gasInfo *GasInfo, leaseInfo *LeaseInfo) error {
 	if key == "" {
 		return fmt.Errorf(ErrorKeyIsRequired)
 	}
