@@ -3,7 +3,8 @@ module github.com/mises-id/sdk
 go 1.14
 
 require (
-	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/btcsuite/btcd v0.22.0-beta
+	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/tendermint v0.34.11
 	github.com/tyler-smith/assert v1.0.1
