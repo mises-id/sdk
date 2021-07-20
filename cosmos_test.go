@@ -1,5 +1,5 @@
 package sdk
-
+/*
 import (
 	"testing"
 
@@ -16,3 +16,4 @@ func TestLeaseInfoToBlocks(t *testing.T) {
 	assert.Equal((&LeaseInfo{Seconds: 5, Minutes: 1, Hours: 1, Days: 1}).ToBlocks(), int64(18013))
 
 }
+*/

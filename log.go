@@ -1,8 +1,10 @@
 package sdk
 
+/*
 import (
 	"fmt"
 )
+
 
 // Debugf level formatted messagctx.logger.
 func (ctx *misesAgent) Debugf(msg string, v ...interface{}) {
@@ -38,3 +40,4 @@ func (ctx *misesAgent) Fatalf(msg string, v ...interface{}) {
 		ctx.logger.Error(fmt.Sprintf(msg, v...))
 	}
 }
+*/

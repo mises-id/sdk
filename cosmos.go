@@ -1,5 +1,6 @@
 package sdk
 
+/*
 import (
 	"bytes"
 	"encoding/base64"
@@ -430,3 +431,4 @@ func parseResponse(res *http.Response) ([]byte, error) {
 
 	return body, nil
 }
+*/

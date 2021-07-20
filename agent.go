@@ -1,5 +1,6 @@
 package sdk
 
+/*
 import (
 	tmsecp256k1 "github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/libs/log"
@@ -71,3 +72,4 @@ func newMisesAgent(chainID string, seed *misesKeySeed) (*misesAgent, error) {
 
 	return ctx, nil
 }
+*/

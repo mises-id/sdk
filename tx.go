@@ -1,5 +1,6 @@
 package sdk
 
+/*
 import (
 	"fmt"
 )
@@ -37,3 +38,4 @@ func (ctx *misesAgent) Create(key string, value string, gasInfo *GasInfo, leaseI
 	}
 	return nil
 }
+*/

@@ -1,5 +1,9 @@
 package sdk
 
+import (
+	"github.com/mises-id/sdk/user"
+)
+
 const DefaultEndpoint string = "http://localhost:1317"
 const DefaultChainID string = "mises"
 const AddressPrefix string = "mises"
@@ -10,59 +14,19 @@ const ErrorValueIsRequired string = "Value is required"
 const ErrorKeyFormat string = "Key format error"
 
 type MSdk interface {
-	AppMgr() (MAppMgr, error)
-	UserMgr() (MUserMgr, error)
+	UserMgr() user.MUserMgr
 	TestConnection() error
 	SetLogLevel(level int) error
-
-	RandomSeed() (MKeySeed, error)
-	RestoreSeed(mnemonic string, passPhrase string) (MKeySeed, error)
+	Login(site string, permissions []string) (string, error)
 }
 
-type MKeySeed interface {
-	Mnemonic() string
-	PassPhrase() string
-}
-
-type MUserInfo interface {
-	Name() string
-	Gender() string
-	AvatarDid() string    //did of avatar file did:mises:0123456789abcdef/avatar
-	AavatarThumb() []byte //avatar thumb is a bitmap
-	HomePage() string     //url
-	Emails() []string
-	Telphones() []string
-	Intro() string
-}
+/*
 type MUserAuthorization interface {
 	UserDid() string       //mises app 的did
 	AppDid() string        //to
 	Permissions() []string //user_info_r,  user_info_w, user_relation_r, user_relation_w
 	ExpireTimestamp() int  //
-	AppAuthorization() MAppAuthorization
-}
-
-type MUserMgr interface {
-	AddUser(seed MKeySeed) (MUser, error)
-	ListUsers() ([]MUser, error)
-	SetActiveUser(userDid string) error
-	ActiveUser() (MUser, error)
-	RemoveUser(userDid string, seed MKeySeed) error
-}
-
-type MUser interface {
-	MisesID() (string, error)
-	Info(appDid string) (MUserInfo, error)
-	IsRegistered() (bool, error)
-	Register(info MUserInfo, appDid string) error
-	SetInfo(info MUserInfo, appDid string) error
-	Follow(whomDid string, appDid string) error
-	UnFollow(whomDid string, appDid string) error
-	AddToBlackList(whomDid string, appDid string) error
-	RemoveFromBlockList(whomDid string, appDid string) error
-	ApproveAuthorization(appDid string, permissions []string, expireIn int) (MUserAuthorization, error)
-	RevokeAuthorization(appDid string, permissions []string) (MUserAuthorization, error)
-	GetAuthorization(appDid string) (MUserAuthorization, error)
+	AppAuthorization() MAppAuth
 }
 
 type MAppInfo interface {
@@ -74,14 +38,15 @@ type MAppInfo interface {
 	Developer() string
 }
 
-type MAppAuthorization interface {
+type MAppAuth interface {
 	AppInfo() MAppInfo
+	MisesId()
 	Permissions() []string //
 	ExpireTimestamp() int  //
 }
 
 type MAppMgr interface {
-	AddApp(app MAppAuthorization, removable bool) (MApp, error)
+	AddApp(app MAppAuth, removable bool) (MApp, error)
 	ListApps() ([]MApp, error)
 	RemoveApp(appDid string) error
 }
@@ -93,19 +58,21 @@ type MEventCallback func(event MEvent) error
 
 type MApp interface {
 	AppDID() (string, error)
+	AppDomain() string
+	SetAppDomain(string)
 	IsRegistered() (bool, error)
 	Register(MAppInfo string, appDid string) error
-	GenerateAuthorization(permisions []string) (MAppAuthorization, error)
+	AddAuth(misesid string, permission []string) (MAppAuth, error)
+	//	GenerateAuthorization(permisions []string) (MAppAuthorization, error)
 
 	AddEventListener(userDid string, userAuth MUserAuthorization, callback MEventCallback)
 	RemoveUserEventListener(userDid string, userAuth MUserAuthorization, callback MEventCallback) error
 	ListFollow(whomDid string) (dids []string)
-	ListBlackListed(whomDid string) (dids []string)
 	Commit() error
 	Cancel() error
 	Agent() (MAgent, error)
 }
-
+*/
 type MPublicKey interface {
 	KeyDid() string       // key did "did:mises:123456789abcdefghi#keys-1"
 	KeyType() string      //Ed25519VerificationKey2020

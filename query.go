@@ -1,5 +1,6 @@
 package sdk
 
+/*
 import (
 	"encoding/json"
 	"fmt"
@@ -118,3 +119,4 @@ func (ctx *misesAgent) Version() (string, error) {
 	}
 	return res.ApplicationVersion.Version, nil
 }
+*/

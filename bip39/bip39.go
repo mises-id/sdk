@@ -1,5 +1,8 @@
-// BIP39 spec can be found at https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
-
+/*
+	bip39 package implements funcs to generate mnemonics and seed,
+	which is used to generate private key, public key and misesid
+	BIP39 spec can be found at https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
+*/
 package bip39
 
 import (
@@ -12,7 +15,6 @@ import (
 	"math/big"
 	"strings"
 
-	//	"github.com/mises-id/sdk/bip39/wordlists/wordlists"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -50,6 +52,7 @@ func init() {
 	SetWordList(English)
 }
 
+// only english wordlist available
 func SetWordList(list []string) {
 	wordList = list
 	wordMap = map[string]int{}
@@ -80,7 +83,7 @@ func NewEntropy(bitNum int) ([]byte, error) {
 	return entropy, nil
 }
 
-// RestoreEntropy
+// Compute entrophy from mnemonics, so if the checksum is correct, the input mnemonics is correct
 func RestoreEntropy(mnemonic string) ([]byte, error) {
 	mnemonicSlice, isValid := splitMnemonic(mnemonic)
 	if !isValid {
@@ -127,6 +130,7 @@ func RestoreEntropy(mnemonic string) ([]byte, error) {
 		eChecksum.Div(eChecksum, checksumShift)
 	}
 
+	// compare checksums
 	if checksum.Cmp(eChecksum) != 0 {
 		return nil, errors.New("checksum incorrect")
 	}
@@ -134,7 +138,7 @@ func RestoreEntropy(mnemonic string) ([]byte, error) {
 	return entropy, nil
 }
 
-// Generate mnemonic from a given entropy
+// Generate mnemonic from a given entropy, words seprated by string(" ")
 func NewMnemonic(entropy []byte) (string, error) {
 	entropyBitLen := len(entropy) * 8
 	checksumBitLen := entropyBitLen / 32
@@ -249,21 +253,7 @@ func padByteSlice(slice []byte, length int) []byte {
 	return newSlice
 }
 
-/*
-func compSlice(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-*/
+// split mnemonics to words([]string)
 func splitMnemonic(mnemonic string) ([]string, bool) {
 	words := strings.Fields(mnemonic)
 	num := len(words)
