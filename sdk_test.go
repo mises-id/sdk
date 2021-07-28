@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/mises-id/sdk/misesid"
-	"github.com/mises-id/sdk/signenc"
+	"github.com/mises-id/sdk/user"
 	"github.com/tyler-smith/assert"
 )
 
@@ -30,11 +30,12 @@ func TestNewSdkForUesr(t *testing.T) {
 
 		fmt.Printf("signed string is: %s\n", signed)
 
-		b := signenc.Verify(signed)
+		b := user.Verify(signed)
 		if b {
 			fmt.Printf("signature is verified\n")
+		} else {
+			fmt.Printf("Signature verification is failed\n")
 		}
-		fmt.Printf("Signature verification is failed\n")
 	}
 
 	fmt.Printf("keystore version is: %d\n", misesid.Ks.Version)

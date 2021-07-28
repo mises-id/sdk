@@ -5,7 +5,6 @@ import (
 
 	"github.com/mises-id/sdk/app"
 	"github.com/mises-id/sdk/bip39"
-	"github.com/mises-id/sdk/signenc"
 	"github.com/mises-id/sdk/user"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -80,10 +79,11 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 	sdk.app.AddAuth(sdk.userMgr.ActiveUser().MisesID(), permission)
 
 	// sign user's misesid, publicKey using his privateKey, return the signed result
-	signed, err := signenc.Sign(sdk.userMgr.ActiveUser(), sdk.userMgr.ActiveUser().MisesID())
+	_, signed, err := user.Sign(sdk.userMgr.ActiveUser(), sdk.userMgr.ActiveUser().MisesID())
 	if err != nil {
 		return "", err
 	}
+
 	return signed, nil
 }
 
