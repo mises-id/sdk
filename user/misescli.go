@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type CallBack func(body []byte) (*WaitResult, error)
+type CallBack func(body []byte) (WaitResult, error)
 type WaitTask struct {
 	session   string
 	pCallback CallBack
@@ -43,6 +43,7 @@ func MakeGetUrl(session string, baseUrl string, cuser MUser) (string, error) {
 
 func WaitResp(t WaitTask, cuser MUser) {
 	var r WaitResult
+	wr = make(map[string]WaitResult)
 	r.session = t.session
 
 	url, err := MakeGetUrl(t.session, QueryResultUrl, cuser)
@@ -69,7 +70,7 @@ func WaitResp(t WaitTask, cuser MUser) {
 		if err != nil {
 			continue
 		}
-		wr[r.session] = *ret
+		wr[r.session] = ret
 
 		return
 	}
@@ -143,7 +144,7 @@ func SetUInfo(cuser MUser, uinfo MisesUserInfo) (string, error) {
 	}
 
 	info := hex.EncodeToString(content)
-	m := cuser.MisesID() + " " + info
+	m := cuser.MisesID() + sep + info
 	msg, signed, err := Sign(cuser, m)
 	if err != nil {
 		return "", err
@@ -157,7 +158,7 @@ func SetUInfo(cuser MUser, uinfo MisesUserInfo) (string, error) {
 }
 
 func SetFollowing(cuser MUser, followingId string, op string) (string, error) {
-	m := cuser.MisesID() + " " + followingId + " " + op
+	m := cuser.MisesID() + sep + followingId + sep + op
 	msg, signed, err := Sign(cuser, m)
 	if err != nil {
 		return "", err
@@ -167,7 +168,7 @@ func SetFollowing(cuser MUser, followingId string, op string) (string, error) {
 	v.Set("msg", msg)
 	v.Set("sig", signed)
 
-	return Set2Mises(cuser, CreateUrl, v)
+	return Set2Mises(cuser, SetFollowingUrl, v)
 }
 
 func Set2Mises(cuser MUser, url string, v url.Values) (string, error) {
@@ -208,14 +209,16 @@ func ParseResp(body []byte) (string, error) {
 	return string(body), nil
 }
 
-func QueryCallBack(body []byte) (*WaitResult, error) {
+func QueryCallBack(body []byte) (WaitResult, error) {
 	var r WaitResult
-	var qr string
 
-	err := json.Unmarshal(body, &qr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &r, nil
+	qr := string(body)
+	r.result = qr
+	/*
+		err := json.Unmarshal(body, &qr)
+		if err != nil {
+			return nil, err
+		}
+	*/
+	return r, nil
 }
