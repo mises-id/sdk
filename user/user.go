@@ -21,19 +21,19 @@ type MUser interface {
 	SetFollow(followingId string, op bool, appDid string) string
 	LoadKeyStore(passPhrase string) error
 	IsRegistered() (bool, error)
-	Register(info MUserInfo, appDid string) error
+	Register(info MisesUserInfo, appDid string) error
 }
 
-type MUserInfo interface {
-	Name() string
-	Gender() string
-	AvatarDid() string    //did of avatar file did:mises:0123456789abcdef/avatar
-	AavatarThumb() []byte //avatar thumb is a bitmap
-	HomePage() string     //url
-	Emails() []string
-	Telphones() []string
-	Intro() string
-}
+// type MUserInfo interface {
+// 	Name() string
+// 	Gender() string
+// 	AvatarDid() string   //did of avatar file did:mises:0123456789abcdef/avatar
+// 	AvatarThumb() []byte //avatar thumb is a bitmap
+// 	HomePage() string    //url
+// 	Emails() []string
+// 	Telphones() []string
+// 	Intro() string
+// }
 
 type MisesUserInfo struct {
 	Name        string
