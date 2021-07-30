@@ -1,5 +1,8 @@
 package mobile
 
+var _ MStringList = &mStringListWrapper{}
+var _ MUserList = &mUserListWrapper{}
+
 type mStringListWrapper struct {
 	slice []string
 }
@@ -21,14 +24,14 @@ func (w *mUserListWrapper) Get(idx int) MUser {
 	return w.slice[idx]
 }
 
-func MStringListToSlice(l MStringList) []string {
+func mStringListToSlice(l MStringList) []string {
 	ret := []string{}
 	for i := 0; i < l.Count(); i++ {
 		ret = append(ret, l.Get(i))
 	}
 	return ret
 }
-func MUserListToSlice(l MUserList) []MUser {
+func mUserListToSlice(l MUserList) []MUser {
 	ret := []MUser{}
 	for i := 0; i < l.Count(); i++ {
 		ret = append(ret, l.Get(i))

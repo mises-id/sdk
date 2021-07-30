@@ -1,9 +1,5 @@
 package mobile
 
-import (
-	"github.com/mises-id/sdk"
-)
-
 type MStringList interface {
 	Count() int
 	Get(idx int) string
@@ -49,26 +45,5 @@ type MSdk interface {
 	TestConnection() error
 	SetLogLevel(level int) error
 	Login(site string, permissions MStringList) (string, error)
-}
-
-type MSdkWrapper struct {
-	sdk.MSdk
-}
-
-func (w *MSdkWrapper) UserMgr() MUserMgr {
-	return &mUserMgrWrapper{w.MSdk.UserMgr()}
-}
-func (w *MSdkWrapper) TestConnection() error {
-	return w.MSdk.TestConnection()
-}
-func (w *MSdkWrapper) SetLogLevel(level int) error {
-	return w.MSdk.SetLogLevel(level)
-}
-func (w *MSdkWrapper) Login(site string, permissions MStringList) (string, error) {
-	return w.MSdk.Login(site, MStringListToSlice(permissions))
-}
-func NewMSdk() MSdk {
-	opt := sdk.MSdkOption{}
-	ret := sdk.NewSdkForUser(opt, "")
-	return &MSdkWrapper{ret}
+	RandomMnemonics() (string, error)
 }

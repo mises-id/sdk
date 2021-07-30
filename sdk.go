@@ -6,8 +6,9 @@ import (
 	"github.com/mises-id/sdk/app"
 	"github.com/mises-id/sdk/bip39"
 	"github.com/mises-id/sdk/user"
-	"github.com/tendermint/tendermint/libs/log"
 )
+
+var _ MSdk = &misesSdk{}
 
 type MSdkOption struct {
 	ChainID string
@@ -15,15 +16,12 @@ type MSdkOption struct {
 }
 
 type misesSdk struct {
-	MSdk
 	options MSdkOption
 	userMgr user.MUserMgr
 	app     app.MApp
-	logger  log.Logger
 }
 
 func (ctx *misesSdk) setupLogger() {
-	ctx.logger = log.NewNopLogger()
 }
 
 func NewSdkForUser(options MSdkOption, passPhrase string) MSdk {
@@ -33,7 +31,6 @@ func NewSdkForUser(options MSdkOption, passPhrase string) MSdk {
 
 	var ctx misesSdk
 	ctx.options = options
-	ctx.setupLogger()
 	ctx.userMgr, ctx.app = MSdkInit(passPhrase)
 
 	return &ctx
@@ -89,4 +86,12 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 
 func (sdk *misesSdk) UserMgr() user.MUserMgr {
 	return sdk.userMgr
+}
+
+func (w *misesSdk) TestConnection() error {
+	return nil
+}
+
+func (w *misesSdk) SetLogLevel(level int) error {
+	return nil
 }

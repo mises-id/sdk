@@ -4,6 +4,10 @@ import (
 	"github.com/mises-id/sdk/user"
 )
 
+var _ MUserInfo = &mUserInfoWrapper{}
+var _ MUser = &mUserWrapper{}
+var _ MUserMgr = &mUserMgrWrapper{}
+
 type mUserInfoWrapper struct {
 	info user.MisesUserInfo
 }
@@ -58,8 +62,8 @@ func (w *mUserWrapper) SetInfo(info MUserInfo) string {
 func (w *mUserWrapper) GetFollow(appDid string) MStringList {
 	return &mStringListWrapper{w.MUser.GetFollow(appDid)}
 }
-func (w *mUserWrapper) SetFollow(followingId string, op bool, appDid string) string {
-	return w.MUser.SetFollow(followingId, op, appDid)
+func (w *mUserWrapper) SetFollow(followingID string, op bool, appDid string) string {
+	return w.MUser.SetFollow(followingID, op, appDid)
 }
 func (w *mUserWrapper) LoadKeyStore(passPhrase string) error {
 	return w.MUser.LoadKeyStore(passPhrase)
