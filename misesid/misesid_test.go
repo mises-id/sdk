@@ -13,13 +13,13 @@ import (
 
 func TestNewMisesId(t *testing.T) {
 	entropy, err := bip39.NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	mnemonic, err := bip39.NewMnemonic(entropy)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	seed, err := bip39.NewSeed(mnemonic, "MISES")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	Mid.masterKey = Seed2MasterKey(seed, []byte("MISES"))
 	privKeyByte := Mid.masterKey[0:32]

@@ -9,20 +9,20 @@ import (
 
 func TestCeateUser(t *testing.T) {
 	entropy, err := bip39.NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	mnemonics, err := bip39.NewMnemonic(entropy)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	var ugr MisesUserMgr
 	pUgr := &ugr
 	passwd := "123456"
 	user, err := pUgr.CreateUser(mnemonics, passwd)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	privKeyCreated := user.PrivKEY()
 
 	err = user.LoadKeyStore(passwd)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	assert.EqualString(t, privKeyCreated, user.PrivKEY())
 }

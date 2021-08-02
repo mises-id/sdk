@@ -26,7 +26,7 @@ func TestNewSdkForUesr(t *testing.T) {
 		// test Login, sign & verify
 		permissions := []string{"user_info_r", "user_info_w"}
 		signed, err := s.Login("mises.site", permissions)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		fmt.Printf("signed string is: %s\n", signed)
 
@@ -54,11 +54,11 @@ func TestNewSdkForUesr(t *testing.T) {
 
 	// test CreateUser
 	mnemonics, err := RandomMnemonics()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	fmt.Printf("mnemonics is: %s\n", mnemonics)
 
 	user, err := ugr.CreateUser(mnemonics, "123456")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	user.MisesID()
 }

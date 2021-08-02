@@ -10,17 +10,17 @@ import (
 
 func TestNewEntropy(t *testing.T) {
 	entropy, err := NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	e := big.NewInt(0).SetBytes(entropy)
 	fmt.Printf("entropy is : %x\n", e)
 }
 
 func TestNewNemonic(t *testing.T) {
 	entropy, err := NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	mnemonic, err := NewMnemonic(entropy)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	fmt.Printf("mnemonic is: %s\n", mnemonic)
 
 	words, b := splitMnemonic(mnemonic)
@@ -36,13 +36,13 @@ func TestNewNemonic(t *testing.T) {
 
 func TestRestoreEntropy(t *testing.T) {
 	entropy, err := NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	mnemonic, err := NewMnemonic(entropy)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	restoreEntropy, err := RestoreEntropy(mnemonic)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	e1 := big.NewInt(0).SetBytes(entropy)
 	e2 := big.NewInt(0).SetBytes(restoreEntropy)
@@ -53,13 +53,13 @@ func TestRestoreEntropy(t *testing.T) {
 
 func TestNewSeed(t *testing.T) {
 	entropy, err := NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	mnemonic, err := NewMnemonic(entropy)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	seed, err := NewSeed(mnemonic, "TREZOR")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	s := big.NewInt(0).SetBytes(seed)
 	fmt.Printf("seed is : %x\n", s)

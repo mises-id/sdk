@@ -2,8 +2,6 @@ package user
 
 import (
 	"encoding/hex"
-	"encoding/json"
-	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/mises-id/sdk/misesid"
@@ -108,18 +106,12 @@ func (user MisesUser) PublicKey() *btcec.PublicKey {
 }
 
 func (user *MisesUser) Info() MisesUserInfo {
-	uib, err := GetUInfo(user, user.MisesID())
+	uInfo, err := GetUInfo(user, user.MisesID())
 	if err != nil {
 		return user.uinfo
 	}
 
-	var ui MisesUserInfo
-	err = json.Unmarshal(uib, &ui)
-	if err != nil {
-		return user.uinfo
-	}
-
-	user.uinfo = ui
+	user.uinfo = *uInfo
 	return user.uinfo
 }
 
@@ -139,12 +131,7 @@ func (user *MisesUser) GetFollow(appid string) []string {
 		return nil
 	}
 
-	return ParseFollowing(f)
-}
-
-func ParseFollowing(f []byte) []string {
-	follows := string(f)
-	return strings.Fields(follows)
+	return f
 }
 
 func (user *MisesUser) SetFollow(followingId string, op bool, appid string) string {

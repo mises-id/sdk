@@ -14,10 +14,8 @@ var sep = "&"
 
 // sign msg using user's private key
 func Sign(cuser MUser, msg string) (string, string, error) {
-	//	misesid := cuser.MisesID()
-	pubkey := cuser.PubKEY()
 	privKey := cuser.PrivateKey()
-	if pubkey == "" || privKey == nil {
+	if privKey == nil {
 		return "", "", fmt.Errorf("private key or public key not available")
 	}
 
@@ -42,9 +40,9 @@ func Sign(cuser MUser, msg string) (string, string, error) {
 
 	derString := sig.Serialize()
 
-	signed := pubkey + sep + hex.EncodeToString(mhash[:]) + sep + hex.EncodeToString(derString)
+	signed := hex.EncodeToString(derString)
 
-	return msg, signed, nil
+	return signed, t, nil
 }
 
 // verify msg is sent by user who has the private key

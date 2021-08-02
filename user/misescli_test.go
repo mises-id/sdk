@@ -2,6 +2,7 @@ package user
 
 import (
 	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -18,19 +19,19 @@ import (
 /*
 func TestCreateUser(t *testing.T) {
 	entropy, err := bip39.NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	mnemonics, err := bip39.NewMnemonic(entropy)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	var ugr MisesUserMgr
 	pUgr := &ugr
 	user, err := pUgr.CreateUser(mnemonics, "123456")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	session, err := CreateUser(user)
 	fmt.Printf("session is: %s\n", session)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 */
 func CreateUserTest() MUser {
@@ -50,15 +51,15 @@ func CreateUserTest() MUser {
 func TestWaitResp(t *testing.T) {
 	//create user
 	entropy, err := bip39.NewEntropy(128)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	mnemonics, err := bip39.NewMnemonic(entropy)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	var ugr MisesUserMgr
 	pUgr := &ugr
 	cuser, err := pUgr.CreateUser(mnemonics, "123456")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// check mises decentralized result
 	var r WaitResult
@@ -72,11 +73,11 @@ func TestWaitResp(t *testing.T) {
 	}
 
 	resp, err := http.Get(url)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	fmt.Printf("%s task has been %s\n", r.session, string(body))
 }
@@ -85,23 +86,23 @@ func TestGetUInfo(t *testing.T) {
 	cuser := CreateUserTest()
 
 	url, err := MakeGetUrl(cuser.MisesID(), GetUInfoUrl, cuser)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	resp, err := http.Get(url)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	fmt.Printf("body is %s\n", string(body))
 
 	var uinfo MisesUserInfo
 	err = json.Unmarshal(body, &uinfo)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	ub, err := json.Marshal(&uinfo)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	fmt.Printf("user info is %s\n", string(ub))
 }
@@ -112,14 +113,14 @@ func TestGetFollowing(t *testing.T) {
 
 	uf := cuser.MisesID()
 	url, err := MakeGetUrl(uf, GetFollowingUrl, cuser)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	resp, err := http.Get(url)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	bs := string(body)
 	fmt.Printf("body is %s\n", bs)
@@ -136,7 +137,7 @@ func TestSetFollowing(t *testing.T) {
 	cuser := CreateUserTest()
 
 	sessionid, err := SetFollowing(cuser, "followinguser", "follow")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	fmt.Printf("following sessionid is %s\n", sessionid)
 
@@ -160,9 +161,23 @@ func TestSetUserInfo(t *testing.T) {
 	info.Telephones = teles
 
 	sessionid, err := SetUInfo(cuser, info)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	fmt.Printf("userinfo sessionid is %s\n", sessionid)
 
 	time.Sleep(10000 * time.Millisecond)
+}
+
+func TestParseTxResp(t *testing.T) {
+
+	resp := MsgTxResp{}
+	resp.Code = 0
+	resp.Error = ""
+	resp.TxResponse = MsgTx{Height: 1, Txhash: "123456"}
+	respBytes, err := json.Marshal(resp)
+	fmt.Printf("resp is %s\n", string(respBytes))
+	assert.NoError(t, err)
+	msgTx, err := ParseTxResp(respBytes)
+	assert.NoError(t, err)
+	assert.EqualString(t, msgTx.Txhash, "123456")
 }
