@@ -36,7 +36,7 @@ type MUser interface {
 type MUserMgr interface {
 	CreateUser(mnemonic string, passPhrase string) (MUser, error)
 	ListUsers() MUserList
-	SetActiveUser(userDid string) error
+	SetActiveUser(userDid string, passPhrase string) error
 	ActiveUser() MUser
 }
 
@@ -44,6 +44,7 @@ type MSdk interface {
 	UserMgr() MUserMgr
 	TestConnection() error
 	SetLogLevel(level int) error
+	SetHomePath(dir string) error
 	Login(site string, permissions MStringList) (string, error)
 	RandomMnemonics() (string, error)
 }

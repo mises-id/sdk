@@ -1,6 +1,7 @@
 package mobile
 
 import (
+	"os"
 	"github.com/mises-id/sdk"
 )
 
@@ -24,6 +25,13 @@ func (w *mSdkWrapper) Login(site string, permissions MStringList) (string, error
 }
 func (w *mSdkWrapper) RandomMnemonics() (string, error) {
 	return sdk.RandomMnemonics()
+}
+func (w *mSdkWrapper) SetHomePath(dir string) error {
+	err := os.Chdir(dir)
+	if err != nil {
+			panic(err)
+	}
+	return nil
 }
 func NewMSdk() MSdk {
 	opt := sdk.MSdkOption{}
