@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/mises-id/sdk/types"
 )
 
 func sanitizeString(s string) string {
@@ -25,7 +27,7 @@ func encodeSafe(s string) string {
 
 func validateKey(key string) error {
 	if strings.Contains(key, "/") {
-		return fmt.Errorf(ErrorKeyFormat)
+		return fmt.Errorf(types.ErrorKeyFormat)
 	}
 	return nil
 }

@@ -4,28 +4,24 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/btcsuite/btcutil/bech32"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/ebfe/keccak"
 	"github.com/mises-id/sdk/bip39"
 	"github.com/mises-id/sdk/misesid"
+	"github.com/mises-id/sdk/types"
 )
 
-type MUserMgr interface {
-	CreateUser(mnemonic string, passPhrase string) (MUser, error)
-	ListUsers() []MUser
-	AddUser(user MUser)
-	SetActiveUser(userDid string) error
-	ActiveUser() MUser
-}
+var _ types.MUserMgr = &MisesUserMgr{}
 
 type MisesUserMgr struct {
-	MUserMgr
-	activeUser MUser
-	users      []MUser
+	activeUser types.MUser
+	users      []types.MUser
 }
 
 // create user & his misesid, private key & uncompressed public key, write a keystore file
-func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (MUser, error) {
+func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (types.MUser, error) {
 	var u MisesUser
 
 	seed, err := bip39.NewSeed(mnemonic, passPhrase)
@@ -45,7 +41,14 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (MUs
 	k.Write(pubKeyByte)
 	publicKey := k.Sum(nil)
 
-	u.mid = hex.EncodeToString(publicKey[len(publicKey)-20:])
+	mid, err := ConvertAndEncode(
+		types.AddressPrefix,
+		publicKey[len(publicKey)-20:],
+	)
+	if err != nil {
+		return nil, err
+	}
+	u.mid = types.MisesIDPrefix + mid
 	u.privKey = hex.EncodeToString(privateKey)
 	u.pubKey = hex.EncodeToString(pubKeyByte)
 	u.privateKey = privKey
@@ -90,11 +93,20 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (MUs
 	return &u, nil
 }
 
-func (userMgr *MisesUserMgr) ListUsers() []MUser {
+func ConvertAndEncode(hrp string, data []byte) (string, error) {
+	converted, err := bech32.ConvertBits(data, 8, 5, true)
+	if err != nil {
+		return "", fmt.Errorf("encoding bech32 failed: %w", err)
+	}
+
+	return bech32.Encode(hrp, converted)
+}
+
+func (userMgr *MisesUserMgr) ListUsers() []types.MUser {
 	return userMgr.users
 }
 
-func (userMgr *MisesUserMgr) AddUser(user MUser) {
+func (userMgr *MisesUserMgr) AddUser(user types.MUser) {
 	userMgr.users = append(userMgr.users, user)
 }
 
@@ -108,6 +120,6 @@ func (userMgr *MisesUserMgr) SetActiveUser(uid string) error {
 	return fmt.Errorf("can not find user(%s) in users manager", uid)
 }
 
-func (userMgr *MisesUserMgr) ActiveUser() MUser {
+func (userMgr *MisesUserMgr) ActiveUser() types.MUser {
 	return userMgr.activeUser
 }

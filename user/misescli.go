@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/mises-id/sdk/types"
 )
 
 type CallBack func(body []byte) (*WaitResult, error)
@@ -17,30 +19,25 @@ type WaitTask struct {
 type WaitResult struct {
 	session string
 	result  string
+	err     string
 }
 
-var wr map[string]*WaitResult
-
-const (
-	APIHost = "http://localhost:1317/"
-
-	MisesIDURLPath   = "mises/did/"
-	CreateMisesIDUrl = APIHost + MisesIDURLPath
-	//QuryMisesIDUrl   = APIHost + MisesIDURLPath
-
-	UInfoURLPath = "mises/user/"
-	SetUInfoURL  = APIHost + UInfoURLPath
-	//GetUInfURL   = APIHost + UInfoURLPath
-
-	FollowingURLPath = "mises/user/relation/"
-	SetFollowingURL  = APIHost + FollowingURLPath
-	//GetFollowingURL  = APIHost + FollowingURLPath
-
-	TxURLPath = "mises/tx/"
-	//QueryTxResultURL = APIHost + TxURLPath
+var (
+	wr      = map[string]*WaitResult{}
+	APIHost = types.DefaultEndpoint
 )
 
-func MakeGetUrl(urlPath string, queryParams string, cuser MUser) (string, error) {
+const (
+	MisesIDURLPath = "mises/did"
+
+	UInfoURLPath = "mises/user"
+
+	FollowingURLPath = "mises/user/relation"
+
+	TxURLPath = "mises/tx"
+)
+
+func MakeGetUrl(urlPath string, queryParams string, cuser types.MUser) (string, error) {
 	signerMisesID := cuser.MisesID()
 	queryRequest := urlPath + "?" + queryParams + "&" + "signer=" + signerMisesID
 	signed, nonce, err := Sign(cuser, queryRequest)
@@ -52,20 +49,19 @@ func MakeGetUrl(urlPath string, queryParams string, cuser MUser) (string, error)
 	return url, nil
 }
 
-func WaitResp(t WaitTask, cuser MUser) {
+func WaitResp(t WaitTask, cuser types.MUser) {
 	var r WaitResult
-	wr = make(map[string]*WaitResult)
 	r.session = t.session
 
 	url, err := MakeGetUrl(TxURLPath, "tx_hash="+t.session, cuser)
 	if err != nil {
-		r.result = "601 url error"
+		r.err = "601 url error"
 		wr[r.session] = &r
 		return
 	}
 
 	for i := 0; i < 3; i++ {
-		time.Sleep(5000 * time.Millisecond)
+		time.Sleep(time.Second * time.Duration(2*i+1))
 		resp, err := http.Get(url)
 		if err != nil {
 			continue
@@ -86,11 +82,11 @@ func WaitResp(t WaitTask, cuser MUser) {
 		return
 	}
 
-	r.result = err.Error()
+	r.err = err.Error()
 	wr[r.session] = &r
 }
 
-func BuildPostForm(msg interface{}, cuser MUser) (url.Values, error) {
+func BuildPostForm(msg interface{}, cuser types.MUser) (url.Values, error) {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
@@ -107,11 +103,12 @@ func BuildPostForm(msg interface{}, cuser MUser) (url.Values, error) {
 	v.Set("msg", msgStr)
 	v.Set("nonce", nonce)
 	v.Set("sig", signed)
+	fmt.Printf("post form is: %s\n", v.Encode())
 	return v, nil
 }
 
 // Retry update to frontend
-func CreateUser(cuser MUser) (string, error) {
+func CreateUser(cuser types.MUser) (string, error) {
 	msg := MsgCreateMisesID{
 		MsgReqBase: MsgReqBase{cuser.MisesID()},
 		PubKey:     cuser.PubKEY(),
@@ -121,11 +118,29 @@ func CreateUser(cuser MUser) (string, error) {
 		return "", err
 	}
 
-	return Set2Mises(cuser, CreateMisesIDUrl, v)
+	return Set2Mises(cuser, APIHost+MisesIDURLPath, v)
+}
+func GetUser(cuser types.MUser, misesid string) (string, error) {
+	url, err := MakeGetUrl(MisesIDURLPath, "mises_id="+misesid, cuser)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return ParseGetUserResp(body)
 }
 
 // retry up to frontend
-func GetUInfo(cuser MUser, misesid string) (*MisesUserInfo, error) {
+func GetUInfo(cuser types.MUser, misesid string) (*MisesUserInfo, error) {
 	url, err := MakeGetUrl(UInfoURLPath, "mises_id="+misesid, cuser)
 	if err != nil {
 		return nil, err
@@ -144,7 +159,7 @@ func GetUInfo(cuser MUser, misesid string) (*MisesUserInfo, error) {
 	return ParseGetUserInfoResp(body)
 }
 
-func GetFollowing(cuser MUser, misesid string) ([]string, error) {
+func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
 	url, err := MakeGetUrl(FollowingURLPath, "mises_id="+misesid, cuser)
 	if err != nil {
 		return nil, err
@@ -172,7 +187,7 @@ func GetFollowing(cuser MUser, misesid string) ([]string, error) {
 	return mids, nil
 }
 
-func SetUInfo(cuser MUser, uinfo MisesUserInfo) (string, error) {
+func SetUInfo(cuser types.MUser, uinfo MisesUserInfo) (string, error) {
 	msg := MsgUpdateUserInfo{
 		MsgReqBase: MsgReqBase{cuser.MisesID()},
 		PublicInfo: uinfo,
@@ -182,10 +197,10 @@ func SetUInfo(cuser MUser, uinfo MisesUserInfo) (string, error) {
 		return "", err
 	}
 
-	return Set2Mises(cuser, SetUInfoURL, v)
+	return Set2Mises(cuser, APIHost+UInfoURLPath, v)
 }
 
-func SetFollowing(cuser MUser, followingId string, op string) (string, error) {
+func SetFollowing(cuser types.MUser, followingId string, op string) (string, error) {
 	msg := MsgFollowMisesID{
 		MsgReqBase: MsgReqBase{cuser.MisesID()},
 		TargetID:   followingId,
@@ -196,10 +211,11 @@ func SetFollowing(cuser MUser, followingId string, op string) (string, error) {
 		return "", err
 	}
 
-	return Set2Mises(cuser, SetFollowingURL, v)
+	return Set2Mises(cuser, APIHost+FollowingURLPath, v)
 }
 
-func Set2Mises(cuser MUser, url string, v url.Values) (string, error) {
+func Set2Mises(cuser types.MUser, url string, v url.Values) (string, error) {
+	fmt.Printf("post url is: %s\n", url)
 	resp, err := http.PostForm(url, v)
 	if err != nil {
 		return "", err
@@ -267,6 +283,19 @@ func ParseGetUserInfoResp(body []byte) (*MisesUserInfo, error) {
 
 	return &r.PublicInfo, nil
 }
+func ParseGetUserResp(body []byte) (string, error) {
+	var r MsgGetUserResp
+
+	err := json.Unmarshal(body, &r)
+	if err != nil {
+		return "", err
+	}
+	if r.Code != 0 {
+		return "", fmt.Errorf("failed to get user:" + r.Error)
+	}
+
+	return r.PubKey, nil
+}
 
 func QueryCallBack(body []byte) (*WaitResult, error) {
 	var r WaitResult
@@ -277,7 +306,25 @@ func QueryCallBack(body []byte) (*WaitResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	if qr.TxResponse.Txhash == r.session {
+		r.result = qr.TxResponse.Height
+	}
 
-	r.result = qr.TxResponse.Txhash
 	return &r, nil
+}
+
+func CheckSession(sessinID string) (bool, error) {
+	r, ok := wr[sessinID]
+	if !ok {
+		return false, fmt.Errorf("no such session " + sessinID)
+	}
+	if r.result != "0" {
+		return true, nil
+	}
+	return false, nil
+
+}
+func SetTestEndpoint(endpoint string) error {
+	APIHost = endpoint
+	return nil
 }

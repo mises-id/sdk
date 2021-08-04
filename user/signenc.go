@@ -4,26 +4,24 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/mises-id/sdk/types"
 )
 
 var sep = "&"
 
 // sign msg using user's private key
-func Sign(cuser MUser, msg string) (string, string, error) {
+func Sign(cuser types.MUser, msg string) (string, string, error) {
 	privKey := cuser.PrivateKey()
 	if privKey == nil {
 		return "", "", fmt.Errorf("private key or public key not available")
 	}
 
-	tb, err := time.Now().MarshalText()
-	if err != nil {
-		return "", "", err
-	}
-	t := hex.EncodeToString(tb)
+	t := strconv.FormatInt(time.Now().UTC().Unix(), 10)
 	msg = msg + sep + t
 	/*
 		dt, err := hex.DecodeString(msg)
@@ -46,13 +44,29 @@ func Sign(cuser MUser, msg string) (string, string, error) {
 }
 
 // verify msg is sent by user who has the private key
-func Verify(signed string) bool {
-	pubKey, mhash, sig, err := parseSigned(signed)
+func Verify(msg string, pubKeyStr string, sigStr string) error {
+	mhash := sha256.Sum256([]byte(msg))
+	publicKeyBytes, err := hex.DecodeString(pubKeyStr)
 	if err != nil {
-		return false
+		return err
+	}
+	pubKey, err := btcec.ParsePubKey(publicKeyBytes, btcec.S256())
+	if err != nil {
+		return fmt.Errorf("can not parse public key")
+	}
+	sigByte, err := hex.DecodeString(sigStr)
+	if err != nil {
+		return err
+	}
+	sig, err := btcec.ParseDERSignature(sigByte, btcec.S256())
+	if err != nil {
+		return fmt.Errorf("can not parse signature")
 	}
 
-	return sig.Verify(mhash, pubKey)
+	if !sig.Verify(mhash[:], pubKey) {
+		return fmt.Errorf("wrong signature")
+	}
+	return nil
 }
 
 func parseSigned(signed string) (*btcec.PublicKey, []byte, *btcec.Signature, error) {

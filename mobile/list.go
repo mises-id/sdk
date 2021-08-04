@@ -1,5 +1,7 @@
 package mobile
 
+import "strings"
+
 var _ MStringList = &mStringListWrapper{}
 var _ MUserList = &mUserListWrapper{}
 
@@ -37,4 +39,8 @@ func mUserListToSlice(l MUserList) []MUser {
 		ret = append(ret, l.Get(i))
 	}
 	return ret
+}
+
+func NewMStringList(s string, sep string) MStringList {
+	return &mStringListWrapper{strings.Split(s, sep)}
 }

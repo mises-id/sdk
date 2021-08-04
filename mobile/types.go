@@ -25,12 +25,12 @@ type MUser interface {
 	PubKEY() string
 	PrivKEY() string
 	Info() MUserInfo
-	SetInfo(info MUserInfo) string
+	SetInfo(info MUserInfo) (string, error)
 	GetFollow(appDid string) MStringList
-	SetFollow(followingId string, op bool, appDid string) string
+	SetFollow(followingDid string, op bool, appDid string) (string, error)
 	LoadKeyStore(passPhrase string) error
-	IsRegistered() (bool, error)
-	Register(info MUserInfo, appDid string) error
+	IsRegistered() error
+	Register(appDid string) (string, error)
 }
 
 type MUserMgr interface {
@@ -42,9 +42,12 @@ type MUserMgr interface {
 
 type MSdk interface {
 	UserMgr() MUserMgr
+	SetTestEndpoint(endpoint string) error
 	TestConnection() error
 	SetLogLevel(level int) error
 	SetHomePath(dir string) error
 	Login(site string, permissions MStringList) (string, error)
 	RandomMnemonics() (string, error)
+
+	CheckSession(sessinID string) (bool, error)
 }

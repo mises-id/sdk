@@ -1,23 +1,58 @@
-package sdk
+package types
 
-import (
-	"github.com/mises-id/sdk/user"
+import "github.com/btcsuite/btcd/btcec"
+
+const (
+	DefaultEndpoint       string = "http://localhost:1317/"
+	DefaultChainID        string = "mises"
+	AddressPrefix         string = "mises"
+	MisesIDPrefix                = "did:mises:"
+	ErrorInvalidLeaseTime string = "Invalid lease time"
+	ErrorKeyIsRequired    string = "Key is required"
+	ErrorValueIsRequired  string = "Value is required"
+	ErrorKeyFormat        string = "Key format error"
 )
 
-const DefaultEndpoint string = "http://localhost:1317"
-const DefaultChainID string = "mises"
-const AddressPrefix string = "mises"
-
-const ErrorInvalidLeaseTime string = "Invalid lease time"
-const ErrorKeyIsRequired string = "Key is required"
-const ErrorValueIsRequired string = "Value is required"
-const ErrorKeyFormat string = "Key format error"
-
 type MSdk interface {
-	UserMgr() user.MUserMgr
+	UserMgr() MUserMgr
 	TestConnection() error
 	SetLogLevel(level int) error
 	Login(site string, permissions []string) (string, error)
+	VerifyLogin(auth string) (string, error)
+}
+
+type MUserInfo interface {
+	Name() string
+	Gender() string
+	AvatarDid() string   //did of avatar file did:mises:0123456789abcdef/avatar
+	AvatarThumb() []byte //avatar thumb is a bitmap
+	HomePage() string    //url
+	Emails() []string
+	Telphones() []string
+	Intro() string
+}
+type MUser interface {
+	MisesID() string
+	PubKEY() string
+	PrivKEY() string
+	PrivateKey() *btcec.PrivateKey
+	PublicKey() *btcec.PublicKey
+	Info() MUserInfo
+	GetFollow(appDid string) []string
+	LoadKeyStore(passPhrase string) error
+	IsRegistered() error
+
+	SetInfo(info MUserInfo) (string, error)
+	SetFollow(followingId string, op bool, appDid string) (string, error)
+	Register(appDid string) (string, error)
+}
+
+type MUserMgr interface {
+	CreateUser(mnemonic string, passPhrase string) (MUser, error)
+	ListUsers() []MUser
+	AddUser(user MUser)
+	SetActiveUser(userDid string) error
+	ActiveUser() MUser
 }
 
 /*

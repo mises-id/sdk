@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/mises-id/sdk/misesid"
@@ -25,13 +26,20 @@ func TestNewSdkForUesr(t *testing.T) {
 
 		// test Login, sign & verify
 		permissions := []string{"user_info_r", "user_info_w"}
-		signed, err := s.Login("mises.site", permissions)
+		auth, err := s.Login("mises.site", permissions)
 		assert.NoError(t, err)
 
-		fmt.Printf("signed string is: %s\n", signed)
+		fmt.Printf("auth string is: %s\n", auth)
 
-		b := user.Verify(signed)
-		if b {
+		v, err := url.ParseQuery(auth)
+		assert.NoError(t, err)
+		misesID := v.Get("mises_id")
+		sigStr := v.Get("sig")
+		nonce := v.Get("nonce")
+
+		err = user.Verify(misesID+"&"+nonce, u.PubKEY(), sigStr)
+		assert.NoError(t, err)
+		if err == nil {
 			fmt.Printf("signature is verified\n")
 		} else {
 			fmt.Printf("Signature verification is failed\n")

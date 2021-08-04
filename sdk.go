@@ -2,13 +2,15 @@ package sdk
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/mises-id/sdk/app"
 	"github.com/mises-id/sdk/bip39"
+	"github.com/mises-id/sdk/types"
 	"github.com/mises-id/sdk/user"
 )
 
-var _ MSdk = &misesSdk{}
+var _ types.MSdk = &misesSdk{}
 
 type MSdkOption struct {
 	ChainID string
@@ -17,16 +19,16 @@ type MSdkOption struct {
 
 type misesSdk struct {
 	options MSdkOption
-	userMgr user.MUserMgr
+	userMgr types.MUserMgr
 	app     app.MApp
 }
 
 func (ctx *misesSdk) setupLogger() {
 }
 
-func NewSdkForUser(options MSdkOption, passPhrase string) MSdk {
+func NewSdkForUser(options MSdkOption, passPhrase string) types.MSdk {
 	if options.ChainID == "" {
-		options.ChainID = DefaultChainID
+		options.ChainID = types.DefaultChainID
 	}
 
 	var ctx misesSdk
@@ -36,7 +38,7 @@ func NewSdkForUser(options MSdkOption, passPhrase string) MSdk {
 	return &ctx
 }
 
-func MSdkInit(passPhrase string) (user.MUserMgr, app.MApp) {
+func MSdkInit(passPhrase string) (types.MUserMgr, app.MApp) {
 	var userMgr user.MisesUserMgr
 	var a app.MisesApp
 	var u user.MisesUser
@@ -72,19 +74,50 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 	if site != sdk.app.AppDomain() {
 		return "", fmt.Errorf("only mises discover supported")
 	}
+	auser := sdk.userMgr.ActiveUser()
+	if auser == nil {
+		return "", fmt.Errorf("no active user")
+	}
 
-	sdk.app.AddAuth(sdk.userMgr.ActiveUser().MisesID(), permission)
+	sdk.app.AddAuth(auser.MisesID(), permission)
 
 	// sign user's misesid, publicKey using his privateKey, return the signed result
-	_, signed, err := user.Sign(sdk.userMgr.ActiveUser(), sdk.userMgr.ActiveUser().MisesID())
+	signed, nonce, err := user.Sign(auser, auser.MisesID())
 	if err != nil {
 		return "", err
 	}
+	v := url.Values{}
+	v.Add("mises_id", auser.MisesID())
+	v.Add("nonce", nonce)
+	v.Add("sig", signed)
 
-	return signed, nil
+	return v.Encode(), nil
+}
+func (sdk *misesSdk) VerifyLogin(auth string) (string, error) {
+	auser := sdk.userMgr.ActiveUser()
+	if auser == nil {
+		return "", fmt.Errorf("no active user")
+	}
+	v, err := url.ParseQuery(auth)
+	if err != nil {
+		return "", err
+	}
+	misesID := v.Get("mises_id")
+	sigStr := v.Get("sig")
+	nonce := v.Get("nonce")
+	pubKeyStr, err := user.GetUser(auser, misesID)
+	if err == nil {
+		return "", err
+	}
+
+	err = user.Verify(misesID+"&"+nonce, pubKeyStr, sigStr)
+	if err == nil {
+		return "", err
+	}
+	return misesID, nil
 }
 
-func (sdk *misesSdk) UserMgr() user.MUserMgr {
+func (sdk *misesSdk) UserMgr() types.MUserMgr {
 	return sdk.userMgr
 }
 

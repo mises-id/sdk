@@ -30,7 +30,7 @@ type MsgRespBase struct {
 	Error string `json:"error,omitempty"`
 }
 type MsgTx struct {
-	Height uint64 `json:"height,omitempty"`
+	Height string `json:"height,omitempty"`
 	Txhash string `json:"txhash,omitempty"`
 }
 
@@ -58,4 +58,9 @@ type MsgGetUserInfoResp struct {
 	MsgRespBase
 	PublicInfo  MisesUserInfo `json:"pub_info,omitempty"`
 	PrivateInfo EncryptedData `json:"pri_info,omitempty"`
+}
+
+type MsgGetUserResp struct {
+	MsgRespBase
+	PubKey string `json:"pub_key,omitempty"`
 }

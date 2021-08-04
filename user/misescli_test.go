@@ -4,7 +4,6 @@ import (
 	//"encoding/json"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	//"io/ioutil"
 	//"net/http"
@@ -13,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/mises-id/sdk/bip39"
+	"github.com/mises-id/sdk/types"
 	"github.com/tyler-smith/assert"
 )
 
@@ -34,7 +34,7 @@ func TestCreateUser(t *testing.T) {
 	assert.NoError(t, err)
 }
 */
-func CreateUserTest() MUser {
+func CreateUserTest() types.MUser {
 	//create user
 	entropy, _ := bip39.NewEntropy(128)
 
@@ -145,27 +145,37 @@ func TestSetFollowing(t *testing.T) {
 }
 */
 
+func TestCreateMisesID(t *testing.T) {
+	cuser := CreateUserTest()
+
+	sessionid, err := CreateUser(cuser)
+	assert.NoError(t, err)
+	assert.False(t, sessionid == "")
+	fmt.Printf("create misesid sessionid is %s\n", sessionid)
+
+}
+
 func TestSetUserInfo(t *testing.T) {
 	cuser := CreateUserTest()
 
 	var info MisesUserInfo
 
-	info.Name = "yingming"
-	info.Gender = "男"
-	info.AvatarId = "007"
-	info.AvatarThumb = []byte("123456789")
-	info.HomePage = "http://mises.com"
+	info.name = "yingming"
+	info.gender = "男"
+	info.avatarId = "007"
+	info.avatarThumb = []byte("123456789")
+	info.homePage = "http://mises.com"
 	emails := []string{"yingming@gmail.com", "51911267@qq.com"}
 	teles := []string{"17701314608", "18601350799", "18811790787"}
-	info.Emails = emails
-	info.Telephones = teles
+	info.emails = emails
+	info.telephones = teles
 
 	sessionid, err := SetUInfo(cuser, info)
 	assert.NoError(t, err)
+	assert.False(t, sessionid == "")
 
 	fmt.Printf("userinfo sessionid is %s\n", sessionid)
 
-	time.Sleep(10000 * time.Millisecond)
 }
 
 func TestParseTxResp(t *testing.T) {
@@ -173,7 +183,7 @@ func TestParseTxResp(t *testing.T) {
 	resp := MsgTxResp{}
 	resp.Code = 0
 	resp.Error = ""
-	resp.TxResponse = MsgTx{Height: 1, Txhash: "123456"}
+	resp.TxResponse = MsgTx{Height: "1", Txhash: "123456"}
 	respBytes, err := json.Marshal(resp)
 	fmt.Printf("resp is %s\n", string(respBytes))
 	assert.NoError(t, err)

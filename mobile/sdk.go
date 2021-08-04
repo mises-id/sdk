@@ -2,13 +2,16 @@ package mobile
 
 import (
 	"os"
+
 	"github.com/mises-id/sdk"
+	"github.com/mises-id/sdk/types"
+	"github.com/mises-id/sdk/user"
 )
 
 var _ MSdk = &mSdkWrapper{}
 
 type mSdkWrapper struct {
-	sdk.MSdk
+	types.MSdk
 }
 
 func (w *mSdkWrapper) UserMgr() MUserMgr {
@@ -29,10 +32,18 @@ func (w *mSdkWrapper) RandomMnemonics() (string, error) {
 func (w *mSdkWrapper) SetHomePath(dir string) error {
 	err := os.Chdir(dir)
 	if err != nil {
-			panic(err)
+		panic(err)
 	}
 	return nil
 }
+
+func (w *mSdkWrapper) CheckSession(sessinID string) (bool, error) {
+	return user.CheckSession(sessinID)
+}
+func (w *mSdkWrapper) SetTestEndpoint(endpoint string) error {
+	return user.SetTestEndpoint(endpoint)
+}
+
 func NewMSdk() MSdk {
 	opt := sdk.MSdkOption{}
 	ret := sdk.NewSdkForUser(opt, "")

@@ -5,54 +5,19 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/mises-id/sdk/misesid"
+	"github.com/mises-id/sdk/types"
 )
 
-type MUser interface {
-	MisesID() string
-	PubKEY() string
-	PrivKEY() string
-	PrivateKey() *btcec.PrivateKey
-	PublicKey() *btcec.PublicKey
-	Info() MisesUserInfo
-	SetInfo(info MisesUserInfo) string
-	GetFollow(appDid string) []string
-	SetFollow(followingId string, op bool, appDid string) string
-	LoadKeyStore(passPhrase string) error
-	IsRegistered() (bool, error)
-	Register(info MisesUserInfo, appDid string) error
-}
-
-// type MUserInfo interface {
-// 	Name() string
-// 	Gender() string
-// 	AvatarDid() string   //did of avatar file did:mises:0123456789abcdef/avatar
-// 	AvatarThumb() []byte //avatar thumb is a bitmap
-// 	HomePage() string    //url
-// 	Emails() []string
-// 	Telphones() []string
-// 	Intro() string
-// }
-
-type MisesUserInfo struct {
-	Name        string
-	Gender      string
-	AvatarId    string
-	AvatarThumb []byte
-	HomePage    string
-	Emails      []string
-	Telephones  []string
-	Intro       string
-}
+var _ types.MUser = &MisesUser{}
 
 type MisesUser struct {
-	MUser
-	mid        string
-	privKey    string
-	pubKey     string
-	privateKey *btcec.PrivateKey
-	publicKey  *btcec.PublicKey
-	uinfo      MisesUserInfo
-	//	isRegister bool
+	mid          string
+	privKey      string
+	pubKey       string
+	privateKey   *btcec.PrivateKey
+	publicKey    *btcec.PublicKey
+	uinfo        MisesUserInfo
+	isRegistered bool
 }
 
 // read keystore file, decode private key
@@ -105,24 +70,25 @@ func (user MisesUser) PublicKey() *btcec.PublicKey {
 	return user.publicKey
 }
 
-func (user *MisesUser) Info() MisesUserInfo {
+func (user *MisesUser) Info() types.MUserInfo {
 	uInfo, err := GetUInfo(user, user.MisesID())
 	if err != nil {
-		return user.uinfo
+		return &user.uinfo
 	}
 
 	user.uinfo = *uInfo
-	return user.uinfo
+	return uInfo
 }
 
-func (user *MisesUser) SetInfo(info MisesUserInfo) string {
-	session, err := SetUInfo(user, info)
+func (user *MisesUser) SetInfo(info types.MUserInfo) (string, error) {
+	minfo := NewMisesUserInfo(info)
+	session, err := SetUInfo(user, *minfo)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
-	user.uinfo = info
-	return session
+	user.uinfo = *minfo
+	return session, nil
 }
 
 func (user *MisesUser) GetFollow(appid string) []string {
@@ -134,7 +100,7 @@ func (user *MisesUser) GetFollow(appid string) []string {
 	return f
 }
 
-func (user *MisesUser) SetFollow(followingId string, op bool, appid string) string {
+func (user *MisesUser) SetFollow(followingId string, op bool, appid string) (string, error) {
 	var operator string
 	if op {
 		operator = "follow"
@@ -142,10 +108,22 @@ func (user *MisesUser) SetFollow(followingId string, op bool, appid string) stri
 		operator = "unfollow"
 	}
 
-	session, err := SetFollowing(user, followingId, operator)
-	if err != nil {
-		return ""
-	}
+	return SetFollowing(user, followingId, operator)
+}
 
-	return session
+func (user *MisesUser) IsRegistered() error {
+	if user.isRegistered {
+		return nil
+	}
+	_, err := GetUser(user, user.MisesID())
+	if err != nil {
+		return err
+	}
+	user.isRegistered = true
+	return nil
+
+}
+
+func (user *MisesUser) Register(appID string) (string, error) {
+	return CreateUser(user)
 }
