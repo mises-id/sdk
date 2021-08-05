@@ -41,16 +41,16 @@ type MsgTxResp struct {
 
 type MsgPagination struct {
 	NextKey string `json:"nextKey,omitempty"`
-	Total   uint64 `json:"total,omitempty"`
+	Total   string `json:"total,omitempty"`
 }
 
-type MsgFollow struct {
+type MsgMises struct {
 	MisesId string `json:"mises_id,omitempty"`
 }
 
-type MsgListFollowResp struct {
+type MsgListMisesResp struct {
 	MsgRespBase
-	FollowList []MsgFollow   `json:"follow_list,omitempty"`
+	MisesList  []MsgMises    `json:"mises_list,omitempty"`
 	Pagination MsgPagination `json:"pagination,omitempty"`
 }
 

@@ -18,6 +18,11 @@ import (
 	"github.com/tyler-smith/assert"
 )
 
+func init() {
+	/* load test data */
+	//user.SetTestEndpoint("http://18.118.47.21:1317/")
+}
+
 /*
 func TestCreateUser(t *testing.T) {
 	entropy, err := bip39.NewEntropy(128)
@@ -209,6 +214,10 @@ func TestFollow(t *testing.T) {
 
 	fmt.Printf("follow sessionid is %s\n", sessionid)
 	PollSession(t, sessionid)
+
+	followingIDs, err := user.GetFollowing(cuser1, cuser1.MisesID())
+	assert.NoError(t, err)
+	assert.True(t, followingIDs[0] == cuser2.MisesID())
 
 }
 

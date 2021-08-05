@@ -176,7 +176,7 @@ func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	msgFolllowList, err := ParseListFollowResp(body)
+	msgFolllowList, err := ParseListMisesResp(body)
 	if err != nil {
 		return nil, err
 	}
@@ -262,18 +262,19 @@ func ParseTxResp(body []byte) (*MsgTx, error) {
 	return &r.TxResponse, nil
 }
 
-func ParseListFollowResp(body []byte) ([]MsgFollow, error) {
-	var r MsgListFollowResp
+func ParseListMisesResp(body []byte) ([]MsgMises, error) {
+	var r MsgListMisesResp
 
+	fmt.Println("ParseListMisesResp " + string(body))
 	err := json.Unmarshal(body, &r)
 	if err != nil {
 		return nil, err
 	}
 	if r.Code != 0 {
-		return nil, fmt.Errorf("failed to list following:" + r.Error)
+		return nil, fmt.Errorf("failed to list mises:" + r.Error)
 	}
 
-	return r.FollowList, nil
+	return r.MisesList, nil
 }
 
 func ParseGetUserInfoResp(body []byte) (*MisesUserInfo, error) {
