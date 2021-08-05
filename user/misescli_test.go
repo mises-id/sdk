@@ -147,29 +147,32 @@ func TestSetFollowing(t *testing.T) {
 }
 */
 
-func TestCreateMisesID(t *testing.T) {
-	cuser := CreateUserTest()
-
+func PollSession(t *testing.T, session string) {
+	wr, err := user.PollSessionResult(60 * time.Second)
+	fmt.Printf("PollSessionResult finish\n")
+	assert.NoError(t, err)
+	assert.True(t, wr.ErrMsg == "")
+	assert.True(t, wr.Session == session)
+}
+func PrepareUser(t *testing.T, cuser types.MUser) {
 	sessionid, err := user.CreateUser(cuser)
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 	fmt.Printf("create misesid sessionid is %s\n", sessionid)
-	wr, err := user.PollSessionResult(30 * time.Second)
-	fmt.Printf("PollSessionResult finish\n")
-	assert.NoError(t, err)
-	assert.True(t, wr.ErrMsg == "")
+	PollSession(t, sessionid)
+}
+
+func TestCreateMisesID(t *testing.T) {
+	cuser := CreateUserTest()
+
+	PrepareUser(t, cuser)
 
 }
 
 func TestSetUserInfo(t *testing.T) {
 	cuser := CreateUserTest()
 
-	sessionid, err := user.CreateUser(cuser)
-	assert.NoError(t, err)
-
-	wr, err := user.PollSessionResult(30 * time.Second)
-	assert.NoError(t, err)
-	assert.True(t, wr.ErrMsg == "")
+	PrepareUser(t, cuser)
 
 	info := user.NewMisesUserInfoRaw(
 		"yingming",
@@ -182,11 +185,30 @@ func TestSetUserInfo(t *testing.T) {
 		"",
 	)
 
-	sessionid, err = user.SetUInfo(cuser, *info)
+	sessionid, err := user.SetUInfo(cuser, *info)
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 
 	fmt.Printf("userinfo sessionid is %s\n", sessionid)
+	PollSession(t, sessionid)
+
+}
+
+func TestFollow(t *testing.T) {
+	cuser1 := CreateUserTest()
+
+	PrepareUser(t, cuser1)
+
+	cuser2 := CreateUserTest()
+
+	PrepareUser(t, cuser2)
+
+	sessionid, err := user.SetFollowing(cuser1, cuser2.MisesID(), "follow")
+	assert.NoError(t, err)
+	assert.False(t, sessionid == "")
+
+	fmt.Printf("follow sessionid is %s\n", sessionid)
+	PollSession(t, sessionid)
 
 }
 

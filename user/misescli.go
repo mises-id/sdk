@@ -161,7 +161,7 @@ func GetUInfo(cuser types.MUser, misesid string) (*MisesUserInfo, error) {
 }
 
 func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
-	url, err := MakeGetUrl(FollowingURLPath, "mises_id="+misesid, cuser)
+	url, err := MakeGetUrl(FollowingURLPath, "filter=following&mises_id="+misesid, cuser)
 	if err != nil {
 		return nil, err
 	}
@@ -189,9 +189,14 @@ func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
 }
 
 func SetUInfo(cuser types.MUser, uinfo MisesUserInfo) (string, error) {
+	encData := EncryptedData{
+		EncData: "",
+		IV:      "",
+	}
 	msg := MsgUpdateUserInfo{
-		MsgReqBase: MsgReqBase{cuser.MisesID()},
-		PublicInfo: uinfo,
+		MsgReqBase:  MsgReqBase{cuser.MisesID()},
+		PublicInfo:  uinfo,
+		PrivateInfo: encData,
 	}
 	v, err := BuildPostForm(&msg, cuser)
 	if err != nil {
