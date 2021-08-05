@@ -11,19 +11,19 @@ import (
 	"github.com/mises-id/sdk/types"
 )
 
-type CallBack func(body []byte) (*WaitResult, error)
+type CallBack func(session string, body []byte) (*WaitResult, error)
 type WaitTask struct {
 	session   string
 	pCallback CallBack
 }
 type WaitResult struct {
-	session string
-	result  string
-	err     string
+	Session string
+	Result  string
+	ErrMsg  string
 }
 
 var (
-	wr      = map[string]*WaitResult{}
+	wrChan  = make(chan *WaitResult)
 	APIHost = types.DefaultEndpoint
 )
 
@@ -49,41 +49,42 @@ func MakeGetUrl(urlPath string, queryParams string, cuser types.MUser) (string, 
 	return url, nil
 }
 
-func WaitResp(t WaitTask, cuser types.MUser) {
-	var r WaitResult
-	r.session = t.session
-
-	url, err := MakeGetUrl(TxURLPath, "tx_hash="+t.session, cuser)
+func HttpGetTx(sessionID string, cuser types.MUser) ([]byte, error) {
+	url, err := MakeGetUrl(TxURLPath, "txhash="+sessionID, cuser)
 	if err != nil {
-		r.err = "601 url error"
-		wr[r.session] = &r
+		return nil, err
+	}
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
+}
+func WaitResp(t WaitTask, cuser types.MUser) {
+
+	for i := 0; i < 12; i++ {
+		time.Sleep(time.Second * 5)
+
+		body, err := HttpGetTx(t.session, cuser)
+		if err != nil {
+			continue
+		}
+
+		ret, err := t.pCallback(t.session, body)
+		if err != nil {
+			continue
+		}
+		wrChan <- ret
+
 		return
 	}
 
-	for i := 0; i < 3; i++ {
-		time.Sleep(time.Second * time.Duration(2*i+1))
-		resp, err := http.Get(url)
-		if err != nil {
-			continue
-		}
-
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			continue
-		}
-
-		ret, err := t.pCallback(body)
-		if err != nil {
-			continue
-		}
-		wr[r.session] = ret
-
-		return
-	}
-
-	r.err = err.Error()
-	wr[r.session] = &r
+	var r WaitResult
+	r.Session = t.session
+	r.ErrMsg = "timout"
+	wrChan <- &r
 }
 
 func BuildPostForm(msg interface{}, cuser types.MUser) (url.Values, error) {
@@ -249,7 +250,7 @@ func ParseTxResp(body []byte) (*MsgTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	if r.Code != 0 {
+	if r.Code != 0 || r.Error != "" {
 		return nil, fmt.Errorf("failed to query tx:" + r.Error)
 	}
 
@@ -297,31 +298,29 @@ func ParseGetUserResp(body []byte) (string, error) {
 	return r.PubKey, nil
 }
 
-func QueryCallBack(body []byte) (*WaitResult, error) {
-	var r WaitResult
+func QueryCallBack(session string, body []byte) (*WaitResult, error) {
+	var r = WaitResult{
+		Session: session,
+	}
 
-	var qr MsgTxResp
-
-	err := json.Unmarshal(body, &qr)
+	MsgTx, err := ParseTxResp(body)
 	if err != nil {
 		return nil, err
 	}
-	if qr.TxResponse.Txhash == r.session {
-		r.result = qr.TxResponse.Height
+	if MsgTx.Txhash == r.Session {
+		r.Result = MsgTx.Height
 	}
 
 	return &r, nil
 }
 
-func CheckSession(sessinID string) (bool, error) {
-	r, ok := wr[sessinID]
-	if !ok {
-		return false, fmt.Errorf("no such session " + sessinID)
+func PollSessionResult(timeout time.Duration) (*WaitResult, error) {
+	select {
+	case ret := <-wrChan:
+		return ret, nil
+	case <-time.After(timeout):
+		return nil, fmt.Errorf("no result")
 	}
-	if r.result != "0" {
-		return true, nil
-	}
-	return false, nil
 
 }
 func SetTestEndpoint(endpoint string) error {

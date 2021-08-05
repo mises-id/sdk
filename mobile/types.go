@@ -40,6 +40,12 @@ type MUserMgr interface {
 	ActiveUser() MUser
 }
 
+type MSessionResult interface {
+	SessionID() string
+	Msg() string
+	Success() bool
+}
+
 type MSdk interface {
 	UserMgr() MUserMgr
 	SetTestEndpoint(endpoint string) error
@@ -49,5 +55,5 @@ type MSdk interface {
 	Login(site string, permissions MStringList) (string, error)
 	RandomMnemonics() (string, error)
 
-	CheckSession(sessinID string) (bool, error)
+	PollSessionResult() MSessionResult
 }

@@ -2,6 +2,7 @@ package mobile
 
 import (
 	"os"
+	"time"
 
 	"github.com/mises-id/sdk"
 	"github.com/mises-id/sdk/types"
@@ -37,8 +38,29 @@ func (w *mSdkWrapper) SetHomePath(dir string) error {
 	return nil
 }
 
-func (w *mSdkWrapper) CheckSession(sessinID string) (bool, error) {
-	return user.CheckSession(sessinID)
+type mSessionResultWrapper struct {
+	user.WaitResult
+}
+
+func (w *mSessionResultWrapper) SessionID() string {
+	return w.Session
+}
+func (w *mSessionResultWrapper) Msg() string {
+	if w.ErrMsg != "" {
+		return w.ErrMsg
+	}
+	return w.Result
+}
+func (w *mSessionResultWrapper) Success() bool {
+	return w.ErrMsg == ""
+}
+
+func (w *mSdkWrapper) PollSessionResult() MSessionResult {
+	wr, err := user.PollSessionResult(2 * time.Second)
+	if err != nil {
+		return nil
+	}
+	return &mSessionResultWrapper{*wr}
 }
 func (w *mSdkWrapper) SetTestEndpoint(endpoint string) error {
 	return user.SetTestEndpoint(endpoint)

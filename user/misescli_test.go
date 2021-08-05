@@ -1,9 +1,10 @@
-package user
+package user_test
 
 import (
 	//"encoding/json"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	//"io/ioutil"
 	//"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/mises-id/sdk/bip39"
 	"github.com/mises-id/sdk/types"
+	"github.com/mises-id/sdk/user"
 	"github.com/tyler-smith/assert"
 )
 
@@ -40,7 +42,7 @@ func CreateUserTest() types.MUser {
 
 	mnemonics, _ := bip39.NewMnemonic(entropy)
 
-	var ugr MisesUserMgr
+	var ugr user.MisesUserMgr
 	pUgr := &ugr
 	cuser, _ := pUgr.CreateUser(mnemonics, "123456")
 
@@ -148,29 +150,39 @@ func TestSetFollowing(t *testing.T) {
 func TestCreateMisesID(t *testing.T) {
 	cuser := CreateUserTest()
 
-	sessionid, err := CreateUser(cuser)
+	sessionid, err := user.CreateUser(cuser)
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 	fmt.Printf("create misesid sessionid is %s\n", sessionid)
+	wr, err := user.PollSessionResult(30 * time.Second)
+	fmt.Printf("PollSessionResult finish\n")
+	assert.NoError(t, err)
+	assert.True(t, wr.ErrMsg == "")
 
 }
 
 func TestSetUserInfo(t *testing.T) {
 	cuser := CreateUserTest()
 
-	var info MisesUserInfo
+	sessionid, err := user.CreateUser(cuser)
+	assert.NoError(t, err)
 
-	info.name = "yingming"
-	info.gender = "男"
-	info.avatarId = "007"
-	info.avatarThumb = []byte("123456789")
-	info.homePage = "http://mises.com"
-	emails := []string{"yingming@gmail.com", "51911267@qq.com"}
-	teles := []string{"17701314608", "18601350799", "18811790787"}
-	info.emails = emails
-	info.telephones = teles
+	wr, err := user.PollSessionResult(30 * time.Second)
+	assert.NoError(t, err)
+	assert.True(t, wr.ErrMsg == "")
 
-	sessionid, err := SetUInfo(cuser, info)
+	info := user.NewMisesUserInfoRaw(
+		"yingming",
+		"男",
+		"007",
+		[]byte("123456789"),
+		"http://mises.com",
+		[]string{"yingming@gmail.com", "51911267@qq.com"},
+		[]string{"17701314608", "18601350799", "18811790787"},
+		"",
+	)
+
+	sessionid, err = user.SetUInfo(cuser, *info)
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 
@@ -180,14 +192,14 @@ func TestSetUserInfo(t *testing.T) {
 
 func TestParseTxResp(t *testing.T) {
 
-	resp := MsgTxResp{}
+	resp := user.MsgTxResp{}
 	resp.Code = 0
 	resp.Error = ""
-	resp.TxResponse = MsgTx{Height: "1", Txhash: "123456"}
+	resp.TxResponse = user.MsgTx{Height: "1", Txhash: "123456"}
 	respBytes, err := json.Marshal(resp)
 	fmt.Printf("resp is %s\n", string(respBytes))
 	assert.NoError(t, err)
-	msgTx, err := ParseTxResp(respBytes)
+	msgTx, err := user.ParseTxResp(respBytes)
 	assert.NoError(t, err)
 	assert.EqualString(t, msgTx.Txhash, "123456")
 }
