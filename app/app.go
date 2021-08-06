@@ -6,19 +6,21 @@ package app
 
 type MisesApp struct {
 	MApp
-	appDID    string
+	appDId    string
 	appDomain string
-	auth      []MisesAuth
+	auths     []MisesAuth
 }
 
 type MisesAuth struct {
-	Uid        string
-	ExpireTime int
-	Permission []string
+	UId                 string
+	ExpirationInSeconds int
+	Permissions         []string
 }
 
-var MisesDiscover = "mises.site"
-var expireTime = 120
+const (
+	MisesDiscover = "mises.site"
+	defaultExpirationInSeconds = 120
+)
 
 type MApp interface {
 	AppDID() string
@@ -28,7 +30,7 @@ type MApp interface {
 	IsRegistered() bool
 	Register(MAppInfo string, appDid string) error
 
-	AddAuth(misesid string, permission []string)
+	AddAuth(misesId string, permissions []string)
 }
 
 type MAppInfo interface {
@@ -41,7 +43,7 @@ type MAppInfo interface {
 }
 
 func (app *MisesApp) AppDID() string {
-	return app.appDID
+	return app.appDId
 }
 
 func (app *MisesApp) AppDomain() string {
@@ -52,11 +54,11 @@ func (app *MisesApp) SetAppDomain(domain string) {
 	app.appDomain = domain
 }
 
-func (app *MisesApp) AddAuth(misesid string, permission []string) {
+func (app *MisesApp) AddAuth(misesId string, permissions []string) {
 	var auth MisesAuth
-	auth.Uid = misesid
-	auth.ExpireTime = expireTime // default is 120 seconds
-	auth.Permission = permission
+	auth.UId = misesId
+	auth.ExpirationInSeconds = defaultExpirationInSeconds // default is 120 seconds
+	auth.Permissions = permissions
 
-	app.auth = append(app.auth, auth)
+	app.auths = append(app.auths, auth)
 }
