@@ -157,7 +157,22 @@ func GetUInfo(cuser types.MUser, misesid string) (*MisesUserInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetUserInfoResp(body)
+	respMsg, err := ParseGetUserInfoResp(body)
+	if err != nil {
+		return nil, err
+	}
+	uinfoByte, err := Decrypt(cuser, respMsg.PrivateInfo.EncData, respMsg.PrivateInfo.IV)
+	if err != nil {
+		return nil, err
+	}
+	uinfo := MisesUserInfo{}
+	err = json.Unmarshal(uinfoByte, &uinfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &uinfo, nil
+
 }
 
 func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
@@ -188,14 +203,23 @@ func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
 	return mids, nil
 }
 
-func SetUInfo(cuser types.MUser, uinfo MisesUserInfo) (string, error) {
+func SetUInfo(cuser types.MUser, uinfo *MisesUserInfo) (string, error) {
+	uinfoByte, err := json.Marshal(uinfo)
+	if err != nil {
+		return "", err
+	}
+	fmt.Printf("uinfo is: %s\n", string(uinfoByte))
+	enc, iv, err := Encrypt(cuser, uinfoByte)
+	if err != nil {
+		return "", err
+	}
 	encData := EncryptedData{
-		EncData: "",
-		IV:      "",
+		EncData: enc,
+		IV:      iv,
 	}
 	msg := MsgUpdateUserInfo{
 		MsgReqBase:  MsgReqBase{cuser.MisesID()},
-		PublicInfo:  uinfo,
+		PublicInfo:  *uinfo,
 		PrivateInfo: encData,
 	}
 	v, err := BuildPostForm(&msg, cuser)
@@ -277,9 +301,10 @@ func ParseListMisesResp(body []byte) ([]MsgMises, error) {
 	return r.MisesList, nil
 }
 
-func ParseGetUserInfoResp(body []byte) (*MisesUserInfo, error) {
+func ParseGetUserInfoResp(body []byte) (*MsgGetUserInfoResp, error) {
 	var r MsgGetUserInfoResp
 
+	fmt.Println("ParseGetUserInfoResp " + string(body))
 	err := json.Unmarshal(body, &r)
 	if err != nil {
 		return nil, err
@@ -288,7 +313,7 @@ func ParseGetUserInfoResp(body []byte) (*MisesUserInfo, error) {
 		return nil, fmt.Errorf("failed to get uinfo:" + r.Error)
 	}
 
-	return &r.PublicInfo, nil
+	return &r, nil
 }
 func ParseGetUserResp(body []byte) (string, error) {
 	var r MsgGetUserResp

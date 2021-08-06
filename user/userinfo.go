@@ -2,59 +2,61 @@ package user
 
 import "github.com/mises-id/sdk/types"
 
-var _ types.MUserInfo = &MisesUserInfo{}
+var _ types.MUserInfo = &MisesUserInfoReadonly{}
 
 type MisesUserInfo struct {
-	name        string
-	gender      string
-	avatarId    string
-	avatarThumb []byte
-	homePage    string
-	emails      []string
-	telephones  []string
-	intro       string
+	Name        string   `json:"name,omitempty"`
+	Gender      string   `json:"gender,omitempty"`
+	AvatarId    string   `json:"avatar_did,omitempty"`
+	AvatarThumb []byte   `json:"avatar_thumb,omitempty"`
+	HomePage    string   `json:"home_page,omitempty"`
+	Emails      []string `json:"emails,omitempty"`
+	Telephones  []string `json:"telephones,omitempty"`
+	Intro       string   `json:"into,omitempty"`
+}
+type MisesUserInfoReadonly struct {
+	MisesUserInfo
 }
 
-func (info *MisesUserInfo) Name() string {
-	return info.name
+func (user *MisesUserInfoReadonly) Name() string {
+	return user.MisesUserInfo.Name
 }
-
-func (info *MisesUserInfo) Gender() string {
-	return info.gender
+func (user *MisesUserInfoReadonly) Gender() string {
+	return user.MisesUserInfo.Gender
 }
-func (info *MisesUserInfo) AvatarDid() string {
-	return info.avatarId
-} //did of avatar file did:mises:0123456789abcdef/avatar
-func (info *MisesUserInfo) AvatarThumb() []byte {
-	return info.avatarThumb
-} //avatar thumb is a bitmap
-func (info *MisesUserInfo) HomePage() string {
-	return info.homePage
-} //url
-func (info *MisesUserInfo) Emails() []string {
-	return info.emails
+func (user *MisesUserInfoReadonly) AvatarDid() string {
+	return user.MisesUserInfo.AvatarId
 }
-func (info *MisesUserInfo) Telphones() []string {
-	return info.telephones
+func (user *MisesUserInfoReadonly) AvatarThumb() []byte {
+	return user.MisesUserInfo.AvatarThumb
 }
-func (info *MisesUserInfo) Intro() string {
-	return info.intro
+func (user *MisesUserInfoReadonly) HomePage() string {
+	return user.MisesUserInfo.HomePage
+}
+func (user *MisesUserInfoReadonly) Emails() []string {
+	return user.MisesUserInfo.Emails
+}
+func (user *MisesUserInfoReadonly) Telphones() []string {
+	return user.MisesUserInfo.Telephones
+}
+func (user *MisesUserInfoReadonly) Intro() string {
+	return user.MisesUserInfo.Intro
 }
 
 func NewMisesUserInfo(info types.MUserInfo) *MisesUserInfo {
 	return &MisesUserInfo{
-		name:        info.Name(),
-		gender:      info.Gender(),
-		avatarId:    info.AvatarDid(),
-		avatarThumb: info.AvatarThumb(),
-		homePage:    info.HomePage(),
-		emails:      info.Emails(),
-		telephones:  info.Telphones(),
-		intro:       info.Intro(),
+		Name:        info.Name(),
+		Gender:      info.Gender(),
+		AvatarId:    info.AvatarDid(),
+		AvatarThumb: info.AvatarThumb(),
+		HomePage:    info.HomePage(),
+		Emails:      info.Emails(),
+		Telephones:  info.Telphones(),
+		Intro:       info.Intro(),
 	}
 }
 
-func NewMisesUserInfoRaw(
+func NewMisesUserInfoReadonly(
 	name string,
 	gender string,
 	avatarDid string,
@@ -62,15 +64,16 @@ func NewMisesUserInfoRaw(
 	homePage string,
 	emails []string,
 	telphones []string,
-	intro string) *MisesUserInfo {
-	return &MisesUserInfo{
-		name:        name,
-		gender:      gender,
-		avatarId:    avatarDid,
-		avatarThumb: avatarThumb,
-		homePage:    homePage,
-		emails:      emails,
-		telephones:  telphones,
-		intro:       intro,
+	intro string) types.MUserInfo {
+	info := MisesUserInfo{
+		Name:        name,
+		Gender:      gender,
+		AvatarId:    avatarDid,
+		AvatarThumb: avatarThumb,
+		HomePage:    homePage,
+		Emails:      emails,
+		Telephones:  telphones,
+		Intro:       intro,
 	}
+	return &MisesUserInfoReadonly{info}
 }

@@ -2,6 +2,7 @@ package user
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 )
 
@@ -103,4 +105,52 @@ func parseSigned(signed string) (*btcec.PublicKey, []byte, *btcec.Signature, err
 	}
 
 	return pubKey, mhash, sig, nil
+}
+
+func AesKey(cuser types.MUser) ([]byte, error) {
+	privKey := cuser.PrivKEY()
+	if privKey == "" {
+		return nil, fmt.Errorf("private key or public key not available")
+	}
+	mhash := sha256.Sum256([]byte(privKey))
+	return mhash[:], nil
+}
+func Encrypt(cuser types.MUser, msg []byte) (string, string, error) {
+	keyByte, err := AesKey(cuser)
+
+	if err != nil {
+		return "", "", err
+	}
+	cipherByte, ivByte, err := misesid.AesEncrypt(msg, keyByte)
+	if err != nil {
+		return "", "", err
+	}
+	cipher := base64.StdEncoding.EncodeToString(cipherByte)
+	iv := base64.StdEncoding.EncodeToString(ivByte)
+
+	return cipher, iv, nil
+
+}
+
+func Decrypt(cuser types.MUser, encData string, iv string) ([]byte, error) {
+	keyByte, err := AesKey(cuser)
+
+	if err != nil {
+		return nil, err
+	}
+
+	cipherByte, err := base64.StdEncoding.Strict().DecodeString(encData)
+	if err != nil {
+		return nil, err
+	}
+	ivByte, err := base64.StdEncoding.Strict().DecodeString(iv)
+	if err != nil {
+		return nil, err
+	}
+
+	msgByte, err := misesid.AesDecrypt(cipherByte, keyByte, ivByte)
+	if err != nil {
+		return nil, err
+	}
+	return msgByte, nil
 }

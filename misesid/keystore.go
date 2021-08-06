@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -111,21 +112,24 @@ func PKCS5Padding(ciphertext []byte, blockSize int) []byte {
 }
 
 // encode private key using s key
-func AesEncrypt(origData, key []byte) ([]byte, error) {
+func AesEncrypt(origData, key []byte) ([]byte, []byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	Ks.Crypto.CipherParams.Iv = hex.EncodeToString(key[:aes.BlockSize])
+	iv := make([]byte, aes.BlockSize)
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		panic(err)
+	}
 
 	blockSize := block.BlockSize()
 	origData = PKCS5Padding(origData, blockSize)
-	blockMode := cipher.NewCBCEncrypter(block, key[:aes.BlockSize])
+	blockMode := cipher.NewCBCEncrypter(block, iv)
 	crypted := make([]byte, len(origData))
 	blockMode.CryptBlocks(crypted, origData)
 
-	return crypted, nil
+	return crypted, iv, nil
 }
 
 func PKCS5UnPadding(origData []byte) ([]byte, error) {
@@ -138,14 +142,13 @@ func PKCS5UnPadding(origData []byte) ([]byte, error) {
 	return nil, fmt.Errorf("unpadding > len(origData, can not unpadding")
 }
 
-func AesDecrypt(crypted, key []byte) ([]byte, error) {
+func AesDecrypt(crypted, key []byte, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	blockSize := block.BlockSize()
-	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
+	blockMode := cipher.NewCBCDecrypter(block, iv)
 	origData := make([]byte, len(crypted))
 	blockMode.CryptBlocks(origData, crypted)
 	origData, err = PKCS5UnPadding(origData)

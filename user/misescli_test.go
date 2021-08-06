@@ -179,7 +179,7 @@ func TestSetUserInfo(t *testing.T) {
 
 	PrepareUser(t, cuser)
 
-	info := user.NewMisesUserInfoRaw(
+	info := user.MisesUserInfo{
 		"yingming",
 		"男",
 		"007",
@@ -188,14 +188,18 @@ func TestSetUserInfo(t *testing.T) {
 		[]string{"yingming@gmail.com", "51911267@qq.com"},
 		[]string{"17701314608", "18601350799", "18811790787"},
 		"",
-	)
+	}
 
-	sessionid, err := user.SetUInfo(cuser, *info)
+	sessionid, err := user.SetUInfo(cuser, &info)
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 
 	fmt.Printf("userinfo sessionid is %s\n", sessionid)
 	PollSession(t, sessionid)
+
+	respInfo, err := user.GetUInfo(cuser, cuser.MisesID())
+	assert.NoError(t, err)
+	assert.True(t, respInfo.Name == "yingming")
 
 }
 
@@ -227,7 +231,7 @@ func TestParseTxResp(t *testing.T) {
 	resp.Code = 0
 	resp.Error = ""
 	resp.TxResponse = user.MsgTx{Height: "1", Txhash: "123456"}
-	respBytes, err := json.Marshal(resp)
+	respBytes, err := json.Marshal(&resp)
 	fmt.Printf("resp is %s\n", string(respBytes))
 	assert.NoError(t, err)
 	msgTx, err := user.ParseTxResp(respBytes)

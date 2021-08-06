@@ -36,8 +36,12 @@ func (user *MisesUser) LoadKeyStore(passPhrase string) error {
 	if err != nil {
 		return err
 	}
+	iv, err := hex.DecodeString(misesid.Ks.Crypto.CipherParams.Iv)
+	if err != nil {
+		return err
+	}
 
-	privKey, err := misesid.AesDecrypt(ctext, s)
+	privKey, err := misesid.AesDecrypt(ctext, s, iv)
 	if err != nil {
 		return err
 	}
@@ -73,16 +77,16 @@ func (user MisesUser) PublicKey() *btcec.PublicKey {
 func (user *MisesUser) Info() types.MUserInfo {
 	uInfo, err := GetUInfo(user, user.MisesID())
 	if err != nil {
-		return &user.uinfo
+		return &MisesUserInfoReadonly{user.uinfo}
 	}
 
 	user.uinfo = *uInfo
-	return uInfo
+	return &MisesUserInfoReadonly{*uInfo}
 }
 
 func (user *MisesUser) SetInfo(info types.MUserInfo) (string, error) {
 	minfo := NewMisesUserInfo(info)
-	session, err := SetUInfo(user, *minfo)
+	session, err := SetUInfo(user, minfo)
 	if err != nil {
 		return "", err
 	}

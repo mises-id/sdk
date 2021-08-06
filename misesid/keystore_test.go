@@ -31,7 +31,7 @@ func TestReadKeyStoreFile(t *testing.T) {
 	}
 }
 
-func TestVoid(t *testing.T) {
+func TestEncDec(t *testing.T) {
 	InitKdfParam()
 
 	s, err := Scrypt("123456")
@@ -40,8 +40,8 @@ func TestVoid(t *testing.T) {
 	privKey := []byte(privateKey)
 	fmt.Printf("private key is: %x, len is: %d\n", big.NewInt(0).SetBytes(privKey), len(privKey))
 
-	var ciphertext []byte
-	if ciphertext, err = AesEncrypt(privKey, s); err != nil {
+	var ciphertext, iv []byte
+	if ciphertext, iv, err = AesEncrypt(privKey, s); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("ciphertext is: %x, len is: %d\n", big.NewInt(0).SetBytes(ciphertext), len(ciphertext))
@@ -62,7 +62,7 @@ func TestVoid(t *testing.T) {
 	fmt.Printf("ds'mac is: %x, len is: %d\n", big.NewInt(0).SetBytes(dmac), len(dmac))
 
 	var dcryptKey []byte
-	if dcryptKey, err = AesDecrypt(ciphertext, ds); err != nil {
+	if dcryptKey, err = AesDecrypt(ciphertext, ds, iv); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("dcrypt key is: %x, len is: %d\n\n", big.NewInt(0).SetBytes(dcryptKey), len(dcryptKey))

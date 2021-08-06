@@ -67,8 +67,8 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (typ
 		return nil, err
 	}
 
-	var ciphertext []byte
-	if ciphertext, err = misesid.AesEncrypt(privKeyByte, s); err != nil {
+	var ciphertext, iv []byte
+	if ciphertext, iv, err = misesid.AesEncrypt(privKeyByte, s); err != nil {
 		return nil, err
 	}
 
@@ -85,6 +85,7 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (typ
 	misesid.Ks.Crypto.Cipher = misesid.CipherMethod
 	misesid.Ks.Crypto.Kdf = misesid.KdfMethod
 	misesid.Ks.Crypto.Mac = hex.EncodeToString(mac)
+	misesid.Ks.Crypto.CipherParams.Iv = hex.EncodeToString(iv)
 
 	if err = misesid.WriteKeyStoreFile(); err != nil {
 		return nil, err

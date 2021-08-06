@@ -57,7 +57,7 @@ func (w *mUserWrapper) Info() MUserInfo {
 	return &mUserInfoWrapper{info: w.MUser.Info()}
 }
 func (w *mUserWrapper) SetInfo(info MUserInfo) (string, error) {
-	minfo := user.NewMisesUserInfoRaw(
+	minfo := user.NewMisesUserInfoReadonly(
 		info.Name(),
 		info.Gender(),
 		info.AvatarDid(),
@@ -126,7 +126,7 @@ func NewMUserInfo(
 	emails MStringList,
 	telphones MStringList,
 	intro string) MUserInfo {
-	info := user.NewMisesUserInfoRaw(
+	info := user.NewMisesUserInfoReadonly(
 		name,
 		gender,
 		avatarDid,
