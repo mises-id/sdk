@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 
 	"github.com/btcsuite/btcd/btcec"
 	"golang.org/x/crypto/scrypt"
@@ -55,6 +56,9 @@ var Ver = 3
 var KdfMethod = "scrypt"
 var CipherMethod = "aes-128-ctr"
 
+func DeleteKeyStoreFile() error {
+	return os.Remove(keyStoreFile)
+}
 func ReadKeyStoreFile() error {
 	content, err := ioutil.ReadFile(keyStoreFile)
 	if err != nil {

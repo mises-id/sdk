@@ -38,6 +38,28 @@ func NewSdkForUser(options MSdkOption, passPhrase string) types.MSdk {
 	return &ctx
 }
 
+func NewSdkForApp(options MSdkOption) types.MSdk {
+	if options.ChainID == "" {
+		options.ChainID = types.DefaultChainID
+	}
+
+	var ctx misesSdk
+	ctx.options = options
+	ctx.userMgr, ctx.app = MSdkInit("")
+
+	if ctx.userMgr.ActiveUser() == nil {
+		mnemonics, err := RandomMnemonics()
+		if err != nil {
+			panic(err)
+		}
+		admin, err := ctx.userMgr.CreateUser(mnemonics, "")
+		admin.Register("appID")
+		ctx.userMgr.SetActiveUser(admin.MisesID())
+	}
+
+	return &ctx
+}
+
 func MSdkInit(passPhrase string) (types.MUserMgr, app.MApp) {
 	var userMgr user.MisesUserMgr
 	var a app.MisesApp
