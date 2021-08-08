@@ -50,7 +50,7 @@ type KeyStore struct {
 	Crypto     Crypto
 }
 
-var Ks KeyStore
+//var Ks KeyStore
 var keyStoreFile = "keystore" // keystore file located in ./config
 var Ver = 3
 var KdfMethod = "scrypt"
@@ -59,21 +59,28 @@ var CipherMethod = "aes-128-ctr"
 func DeleteKeyStoreFile() error {
 	return os.Remove(keyStoreFile)
 }
-func ReadKeyStoreFile() error {
+func ReadKeyStoreFile() (*KeyStore, error) {
 	content, err := ioutil.ReadFile(keyStoreFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return json.Unmarshal(content, &Ks)
+	var ks KeyStore
+
+	err = json.Unmarshal(content, &ks)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ks, nil
 }
 
-func WriteKeyStoreFile() error {
-	if Ks.Crypto.Mac == "" {
+func (ks *KeyStore) WriteKeyStoreFile() error {
+	if ks.Crypto.Mac == "" {
 		return fmt.Errorf("invalid mac")
 	}
 
-	content, err := json.Marshal(Ks)
+	content, err := json.Marshal(*ks)
 	if err != nil {
 		return err
 	}
@@ -82,25 +89,31 @@ func WriteKeyStoreFile() error {
 }
 
 // init kdf parameters, must be called before encoding or decoding funcs
-func InitKdfParam() {
+func (ks *KeyStore) InitKdfParam() {
 	salt := make([]byte, 16)
 	_, _ = rand.Read(salt)
 
-	Ks.Crypto.KdfParams.Salt = hex.EncodeToString(salt)
-	Ks.Crypto.KdfParams.Dklen = 16
-	Ks.Crypto.KdfParams.N = 32768
-	Ks.Crypto.KdfParams.R = 8
-	Ks.Crypto.KdfParams.P = 1
+	ks.Crypto.KdfParams.Salt = hex.EncodeToString(salt)
+	ks.Crypto.KdfParams.Dklen = 16
+	ks.Crypto.KdfParams.N = 32768
+	ks.Crypto.KdfParams.R = 8
+	ks.Crypto.KdfParams.P = 1
 }
 
 // compute s decoding key from local password
-func Scrypt(password string) ([]byte, error) {
-	salt, err := hex.DecodeString(Ks.Crypto.KdfParams.Salt)
+func (ks *KeyStore) Scrypt(password string) ([]byte, error) {
+	salt, err := hex.DecodeString(ks.Crypto.KdfParams.Salt)
 	if err != nil {
 		return nil, err
 	}
 
-	ck, err := scrypt.Key([]byte(password), salt, Ks.Crypto.KdfParams.N, Ks.Crypto.KdfParams.R, Ks.Crypto.KdfParams.P, Ks.Crypto.KdfParams.Dklen)
+	ck, err := scrypt.Key(
+		[]byte(password), salt,
+		ks.Crypto.KdfParams.N,
+		ks.Crypto.KdfParams.R,
+		ks.Crypto.KdfParams.P,
+		ks.Crypto.KdfParams.Dklen,
+	)
 	if err != nil {
 		return nil, err
 	}

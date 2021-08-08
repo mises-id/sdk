@@ -68,12 +68,12 @@ func MSdkInit(passPhrase string) (types.MUserMgr, app.MApp) {
 	a.SetAppDomain(app.MisesDiscover)
 
 	err := u.LoadKeyStore(passPhrase)
-	if err != nil {
-		return &userMgr, &a
+	if u.MisesID() != "" {
+		userMgr.AddUser(&u)
 	}
-
-	userMgr.AddUser(&u)
-	userMgr.SetActiveUser(u.MisesID())
+	if err == nil {
+		userMgr.SetActiveUser(u.MisesID())
+	}
 
 	return &userMgr, &a
 }

@@ -51,7 +51,6 @@ type MSdk interface {
 	SetTestEndpoint(endpoint string) error
 	TestConnection() error
 	SetLogLevel(level int) error
-	SetHomePath(dir string) error
 	Login(site string, permissions MStringList) (string, error)
 	RandomMnemonics() (string, error)
 

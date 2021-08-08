@@ -102,12 +102,18 @@ func (w *mUserMgrWrapper) ListUsers() MUserList {
 	return &mUserListWrapper{wus}
 }
 func (w *mUserMgrWrapper) SetActiveUser(userDid string, passPhrase string) error {
-	err := w.MUserMgr.SetActiveUser(userDid)
-	if err != nil {
-		return err
+	users := w.MUserMgr.ListUsers()
+	for _, cu := range users {
+		if userDid == cu.MisesID() {
+			err := cu.LoadKeyStore(passPhrase)
+			if err != nil {
+				return err
+			}
+			w.MUserMgr.SetActiveUser(userDid)
+		}
 	}
-	user := w.ActiveUser()
-	return user.LoadKeyStore(passPhrase)
+
+	return nil
 }
 func (w *mUserMgrWrapper) ActiveUser() MUser {
 	u := w.MUserMgr.ActiveUser()

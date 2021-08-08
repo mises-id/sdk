@@ -11,7 +11,7 @@ import (
 	"github.com/tyler-smith/assert"
 )
 
-func TestNewSdkForUesr(t *testing.T) {
+func TestSdkNewForUesr(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
 	mo := sdk.MSdkOption{"test", true}
 
@@ -28,19 +28,19 @@ func TestNewSdkForUesr(t *testing.T) {
 	newUser, err := ugr.CreateUser(mnemonics, "123456")
 	assert.NoError(t, err)
 
-	fmt.Printf("keystore version is: %d\n", misesid.Ks.Version)
-	fmt.Printf("keystore id is: %s\n", misesid.Ks.MId)
-	fmt.Printf("keystore address is: %s\n", misesid.Ks.PubKey)
-	fmt.Printf("keystore kdf is: %s\n", misesid.Ks.Crypto.Kdf)
-	fmt.Printf("keystore dklen is: %d\n", misesid.Ks.Crypto.KdfParams.Dklen)
-	fmt.Printf("keystore salt is: %s\n", misesid.Ks.Crypto.KdfParams.Salt)
-	fmt.Printf("keystore n is: %d\n", misesid.Ks.Crypto.KdfParams.N)
-	fmt.Printf("keystore r is: %d\n", misesid.Ks.Crypto.KdfParams.R)
-	fmt.Printf("keystore p is: %d\n", misesid.Ks.Crypto.KdfParams.P)
-	fmt.Printf("keystore cipher is: %s\n", misesid.Ks.Crypto.Cipher)
-	fmt.Printf("keystore ciphertext is: %s\n", misesid.Ks.Crypto.Ciphertext)
-	fmt.Printf("keystore iv is: %s\n", misesid.Ks.Crypto.CipherParams.Iv)
-	fmt.Printf("keystore mac is: %s\n", misesid.Ks.Crypto.Mac)
+	// fmt.Printf("keystore version is: %d\n", misesid.Ks.Version)
+	// fmt.Printf("keystore id is: %s\n", misesid.Ks.MId)
+	// fmt.Printf("keystore address is: %s\n", misesid.Ks.PubKey)
+	// fmt.Printf("keystore kdf is: %s\n", misesid.Ks.Crypto.Kdf)
+	// fmt.Printf("keystore dklen is: %d\n", misesid.Ks.Crypto.KdfParams.Dklen)
+	// fmt.Printf("keystore salt is: %s\n", misesid.Ks.Crypto.KdfParams.Salt)
+	// fmt.Printf("keystore n is: %d\n", misesid.Ks.Crypto.KdfParams.N)
+	// fmt.Printf("keystore r is: %d\n", misesid.Ks.Crypto.KdfParams.R)
+	// fmt.Printf("keystore p is: %d\n", misesid.Ks.Crypto.KdfParams.P)
+	// fmt.Printf("keystore cipher is: %s\n", misesid.Ks.Crypto.Cipher)
+	// fmt.Printf("keystore ciphertext is: %s\n", misesid.Ks.Crypto.Ciphertext)
+	// fmt.Printf("keystore iv is: %s\n", misesid.Ks.Crypto.CipherParams.Iv)
+	// fmt.Printf("keystore mac is: %s\n", misesid.Ks.Crypto.Mac)
 
 	u := ugr.ActiveUser()
 	assert.True(t, u != nil)
@@ -79,7 +79,41 @@ func TestNewSdkForUesr(t *testing.T) {
 
 }
 
-func TestNewSdkForApp(t *testing.T) {
+func TestSdkActiveUesr(t *testing.T) {
+	misesid.DeleteKeyStoreFile()
+	mo := sdk.MSdkOption{"test", true}
+
+	// test NewSdkForUser
+	s := sdk.NewSdkForUser(mo, "123456")
+
+	ugr := s.UserMgr()
+
+	u := ugr.ActiveUser()
+	assert.True(t, u == nil)
+	mnemonics, err := sdk.RandomMnemonics()
+	assert.NoError(t, err)
+	fmt.Printf("mnemonics is: %s\n", mnemonics)
+
+	newUser, err := ugr.CreateUser(mnemonics, "123456")
+	assert.NoError(t, err)
+
+	u = ugr.ActiveUser()
+	assert.True(t, u.MisesID() == newUser.MisesID())
+
+	mo = sdk.MSdkOption{"test", true}
+	s = sdk.NewSdkForUser(mo, "123456")
+	ugr = s.UserMgr()
+	u = ugr.ActiveUser()
+	assert.NotNil(t, u)
+
+	s = sdk.NewSdkForUser(mo, "")
+	ugr = s.UserMgr()
+	u = ugr.ActiveUser()
+	assert.Nil(t, u)
+
+}
+
+func TestSdkNewForApp(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
 	mo := sdk.MSdkOption{"test", true}
 	s := sdk.NewSdkForApp(mo)

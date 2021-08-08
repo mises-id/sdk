@@ -30,13 +30,6 @@ func (w *mSdkWrapper) Login(site string, permissions MStringList) (string, error
 func (w *mSdkWrapper) RandomMnemonics() (string, error) {
 	return sdk.RandomMnemonics()
 }
-func (w *mSdkWrapper) SetHomePath(dir string) error {
-	err := os.Chdir(dir)
-	if err != nil {
-		panic(err)
-	}
-	return nil
-}
 
 type mSessionResultWrapper struct {
 	user.WaitResult
@@ -70,4 +63,12 @@ func NewMSdk() MSdk {
 	opt := sdk.MSdkOption{}
 	ret := sdk.NewSdkForUser(opt, "")
 	return &mSdkWrapper{ret}
+}
+
+func SetHomePath(dir string) error {
+	err := os.Chdir(dir)
+	if err != nil {
+		panic(err)
+	}
+	return nil
 }

@@ -20,7 +20,7 @@ import (
 
 func init() {
 	/* load test data */
-	//user.SetTestEndpoint("http://18.118.47.21:1317/")
+	user.SetTestEndpoint("http://gw.mises.site:1317/")
 }
 
 /*
@@ -167,14 +167,14 @@ func PrepareUser(t *testing.T, cuser types.MUser) {
 	PollSession(t, sessionid)
 }
 
-func TestCreateMisesID(t *testing.T) {
+func TestUserCreateMisesID(t *testing.T) {
 	cuser := CreateUserTest()
 
 	PrepareUser(t, cuser)
 
 }
 
-func TestSetUserInfo(t *testing.T) {
+func TestUserSetInfo(t *testing.T) {
 	cuser := CreateUserTest()
 
 	PrepareUser(t, cuser)
@@ -203,7 +203,7 @@ func TestSetUserInfo(t *testing.T) {
 
 }
 
-func TestFollow(t *testing.T) {
+func TestUserFollow(t *testing.T) {
 	cuser1 := CreateUserTest()
 
 	PrepareUser(t, cuser1)
@@ -223,9 +223,20 @@ func TestFollow(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, followingIDs[0] == cuser2.MisesID())
 
+	sessionid1, err := user.SetFollowing(cuser1, cuser2.MisesID(), "unfollow")
+	assert.NoError(t, err)
+	assert.False(t, sessionid1 == "")
+
+	fmt.Printf("unfollow sessionid is %s\n", sessionid1)
+	PollSession(t, sessionid1)
+
+	followingIDs1, err := user.GetFollowing(cuser1, cuser1.MisesID())
+	assert.NoError(t, err)
+	assert.True(t, len(followingIDs1) == 0)
+
 }
 
-func TestParseTxResp(t *testing.T) {
+func TestUserParseTxResp(t *testing.T) {
 
 	resp := user.MsgTxResp{}
 	resp.Code = 0

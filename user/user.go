@@ -22,21 +22,24 @@ type MisesUser struct {
 
 // read keystore file, decode private key
 func (user *MisesUser) LoadKeyStore(passPhrase string) error {
-	err := misesid.ReadKeyStoreFile()
+	ks, err := misesid.ReadKeyStoreFile()
 	if err != nil {
 		return err
 	}
 
-	s, err := misesid.Scrypt(passPhrase)
+	user.mid = ks.MId
+	user.pubKey = ks.PubKey
+
+	s, err := ks.Scrypt(passPhrase)
 	if err != nil {
 		return err
 	}
 
-	ctext, err := hex.DecodeString(misesid.Ks.Crypto.Ciphertext)
+	ctext, err := hex.DecodeString(ks.Crypto.Ciphertext)
 	if err != nil {
 		return err
 	}
-	iv, err := hex.DecodeString(misesid.Ks.Crypto.CipherParams.Iv)
+	iv, err := hex.DecodeString(ks.Crypto.CipherParams.Iv)
 	if err != nil {
 		return err
 	}
@@ -47,8 +50,7 @@ func (user *MisesUser) LoadKeyStore(passPhrase string) error {
 	}
 
 	user.privateKey, user.publicKey = btcec.PrivKeyFromBytes(btcec.S256(), privKey)
-	user.mid = misesid.Ks.MId
-	user.pubKey = misesid.Ks.PubKey
+
 	user.privKey = hex.EncodeToString(privKey)
 
 	return nil
@@ -85,6 +87,7 @@ func (user *MisesUser) Info() types.MUserInfo {
 }
 
 func (user *MisesUser) SetInfo(info types.MUserInfo) (string, error) {
+
 	minfo := NewMisesUserInfo(info)
 	session, err := SetUInfo(user, minfo)
 	if err != nil {
@@ -96,15 +99,17 @@ func (user *MisesUser) SetInfo(info types.MUserInfo) (string, error) {
 }
 
 func (user *MisesUser) GetFollow(appid string) []string {
+
 	f, err := GetFollowing(user, user.MisesID())
 	if err != nil {
-		return nil
+		return []string{}
 	}
 
 	return f
 }
 
 func (user *MisesUser) SetFollow(followingId string, op bool, appid string) (string, error) {
+
 	var operator string
 	if op {
 		operator = "follow"

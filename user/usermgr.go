@@ -59,10 +59,11 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (typ
 	userMgr.AddUser(&u)
 	userMgr.SetActiveUser(u.mid)
 
-	// encrypt privateKey, and write keystore file
-	misesid.InitKdfParam()
+	// encrypt privatKey, and write keystore file
+	ks := &misesid.KeyStore{}
+	ks.InitKdfParam()
 
-	s, err := misesid.Scrypt(passPhrase)
+	s, err := ks.Scrypt(passPhrase)
 	if err != nil {
 		return nil, err
 	}
@@ -78,16 +79,16 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (typ
 	}
 
 	// write keystore file
-	misesid.Ks.MId = u.mid
-	misesid.Ks.PubKey = u.pubKey
-	misesid.Ks.Version = misesid.Ver
-	misesid.Ks.Crypto.Ciphertext = hex.EncodeToString(ciphertext)
-	misesid.Ks.Crypto.Cipher = misesid.CipherMethod
-	misesid.Ks.Crypto.Kdf = misesid.KdfMethod
-	misesid.Ks.Crypto.Mac = hex.EncodeToString(mac)
-	misesid.Ks.Crypto.CipherParams.Iv = hex.EncodeToString(iv)
+	ks.MId = u.mid
+	ks.PubKey = u.pubKey
+	ks.Version = misesid.Ver
+	ks.Crypto.Ciphertext = hex.EncodeToString(ciphertext)
+	ks.Crypto.Cipher = misesid.CipherMethod
+	ks.Crypto.Kdf = misesid.KdfMethod
+	ks.Crypto.Mac = hex.EncodeToString(mac)
+	ks.Crypto.CipherParams.Iv = hex.EncodeToString(iv)
 
-	if err = misesid.WriteKeyStoreFile(); err != nil {
+	if err = ks.WriteKeyStoreFile(); err != nil {
 		return nil, err
 	}
 
