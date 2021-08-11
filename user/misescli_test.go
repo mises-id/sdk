@@ -20,7 +20,7 @@ import (
 
 func init() {
 	/* load test data */
-	user.SetTestEndpoint("http://gw.mises.site:1317/")
+	//user.SetTestEndpoint("http://gw.mises.site:1317/")
 }
 
 /*
