@@ -21,7 +21,7 @@ func TestNewMisesId(t *testing.T) {
 	seed, err := bip39.NewSeed(mnemonic, "MISES")
 	assert.NoError(t, err)
 
-	Mid.masterKey = Seed2MasterKey(seed, []byte("MISES"))
+	Mid.masterKey = Seed2MasterKey(seed)
 	privKeyByte := Mid.masterKey[0:32]
 	Mid.chainCode = Mid.masterKey[32:]
 	fmt.Printf("master key is: %x, len is: %d\n", big.NewInt(0).SetBytes(Mid.masterKey), len(Mid.masterKey))

@@ -19,15 +19,18 @@ type MisesId struct {
 var Mid MisesId
 
 // generate Master Key from seed & password
-func Seed2MasterKey(seed []byte, key []byte) []byte {
-	hmac512 := hmac.New(sha512.New, key)
-	hmac512.Write(seed)
-	return hmac512.Sum(nil)
+func Seed2MasterKey(seed []byte) []byte {
+	hmac := hmac.New(sha512.New, []byte("Mises seed"))
+	_, err := hmac.Write(seed)
+	if err != nil {
+		panic(err)
+	}
+	return hmac.Sum(nil)
 }
 
 // not used, CreateUser instead
 func NewMisesId(seed []byte, password string) {
-	Mid.masterKey = Seed2MasterKey(seed, []byte(password))
+	Mid.masterKey = Seed2MasterKey(seed)
 	privKeyByte := Mid.masterKey[0:31]
 	Mid.chainCode = Mid.masterKey[32:63]
 
