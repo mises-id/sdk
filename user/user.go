@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/mises-id/sdk/misesid"
@@ -9,6 +10,10 @@ import (
 )
 
 var _ types.MUser = &MisesUser{}
+
+const (
+	ErrorMsgWrongPassword = "wrong password"
+)
 
 type MisesUser struct {
 	mid          string
@@ -32,25 +37,33 @@ func (user *MisesUser) LoadKeyStore(passPhrase string) error {
 
 	s, err := ks.Scrypt(passPhrase)
 	if err != nil {
-		return err
+		return fmt.Errorf(ErrorMsgWrongPassword)
 	}
 
 	ctext, err := hex.DecodeString(ks.Crypto.Ciphertext)
 	if err != nil {
-		return err
+		return fmt.Errorf(ErrorMsgWrongPassword)
 	}
 	iv, err := hex.DecodeString(ks.Crypto.CipherParams.Iv)
 	if err != nil {
-		return err
+		return fmt.Errorf(ErrorMsgWrongPassword)
 	}
 
 	privKey, err := misesid.AesDecrypt(ctext, s, iv)
 	if err != nil {
-		return err
+		return fmt.Errorf(ErrorMsgWrongPassword)
 	}
 
-	user.privateKey, user.publicKey = btcec.PrivKeyFromBytes(btcec.S256(), privKey)
+	privateKey, publicKey := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
 
+	pubKeyByte := publicKey.SerializeUncompressed()
+
+	if ks.PubKey != hex.EncodeToString(pubKeyByte) {
+		return fmt.Errorf(ErrorMsgWrongPassword)
+	}
+
+	user.privateKey = privateKey
+	user.publicKey = publicKey
 	user.privKey = hex.EncodeToString(privKey)
 
 	return nil
