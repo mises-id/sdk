@@ -340,6 +340,9 @@ func QueryCallBack(session string, body []byte) (*WaitResult, error) {
 	}
 	if MsgTx.Txhash == r.Session {
 		r.Result = MsgTx.Height
+		if MsgTx.Code != 0 {
+			r.ErrMsg = MsgTx.RawLog
+		}
 	}
 
 	return &r, nil
