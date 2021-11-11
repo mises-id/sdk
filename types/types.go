@@ -57,7 +57,7 @@ type MUserMgr interface {
 
 /*
 type MUserAuthorization interface {
-	UserDid() string       //mises app 的did
+	UserDid() string       //mises app did
 	AppDid() string        //to
 	Permissions() []string //user_info_r,  user_info_w, user_relation_r, user_relation_w
 	ExpireTimestamp() int  //
