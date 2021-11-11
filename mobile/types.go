@@ -53,6 +53,6 @@ type MSdk interface {
 	SetLogLevel(level int) error
 	Login(site string, permissions MStringList) (string, error)
 	RandomMnemonics() (string, error)
-
+	CheckMnemonics(mne string) error
 	PollSessionResult() MSessionResult
 }

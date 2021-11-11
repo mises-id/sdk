@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mises-id/sdk"
+	"github.com/mises-id/sdk/bip39"
 	"github.com/mises-id/sdk/types"
 	"github.com/mises-id/sdk/user"
 )
@@ -29,6 +30,10 @@ func (w *mSdkWrapper) Login(site string, permissions MStringList) (string, error
 }
 func (w *mSdkWrapper) RandomMnemonics() (string, error) {
 	return sdk.RandomMnemonics()
+}
+func (w *mSdkWrapper) CheckMnemonics(mne string) error {
+	_, err := bip39.Mnemonic2ByteArray(mne)
+	return err
 }
 
 type mSessionResultWrapper struct {

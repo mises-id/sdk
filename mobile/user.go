@@ -90,7 +90,6 @@ func (w *mUserMgrWrapper) CreateUser(mnemonic string, passPhrase string) (MUser,
 	if err != nil {
 		return nil, err
 	}
-	w.MUserMgr.AddUser(u)
 	return &mUserWrapper{u}, nil
 }
 func (w *mUserMgrWrapper) ListUsers() MUserList {

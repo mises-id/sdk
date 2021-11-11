@@ -24,12 +24,14 @@ type MisesUserMgr struct {
 func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (types.MUser, error) {
 	var u MisesUser
 
-	seed, err := bip39.NewSeed(mnemonic, passPhrase)
+	// in bip39, passPhrase will affect the wallet address,
+	// that's not what we need now, so we simply set the passwaor to empty
+	seed, err := bip39.NewSeed(mnemonic, "")
 	if err != nil {
 		return nil, err
 	}
 
-	masterKey := misesid.Seed2MasterKey(seed, []byte(passPhrase))
+	masterKey := misesid.Seed2MasterKey(seed)
 	privKeyByte := masterKey[0:32]
 	//	chainCode := masterKey[32:]
 

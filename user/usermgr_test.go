@@ -56,3 +56,21 @@ func TestUserMgrList(t *testing.T) {
 	actuser = ugr.ActiveUser()
 	assert.NotNil(t, actuser)
 }
+
+func TestUserMgrSetActivate(t *testing.T) {
+	_, user := CreateRandomUser(t)
+
+	err := user.LoadKeyStore("1")
+	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+
+	err = user.LoadKeyStore("12")
+	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	err = user.LoadKeyStore("123")
+	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	err = user.LoadKeyStore("1234")
+	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	err = user.LoadKeyStore("12345")
+	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	err = user.LoadKeyStore("123456")
+	assert.NoError(t, err)
+}

@@ -2,6 +2,8 @@ package user_test
 
 import (
 	//"encoding/json"
+
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -156,8 +158,8 @@ func PollSession(t *testing.T, session string) {
 	wr, err := user.PollSessionResult(60 * time.Second)
 	fmt.Printf("PollSessionResult finish\n")
 	assert.NoError(t, err)
-	assert.True(t, wr.ErrMsg == "")
-	assert.True(t, wr.Session == session)
+	assert.EqualString(t, "", wr.ErrMsg)
+	assert.EqualString(t, session, wr.Session)
 }
 func PrepareUser(t *testing.T, cuser types.MUser) {
 	sessionid, err := user.CreateUser(cuser)
@@ -181,7 +183,7 @@ func TestUserSetInfo(t *testing.T) {
 
 	info := user.MisesUserInfo{
 		"yingming",
-		"男",
+		"male",
 		"007",
 		[]byte("123456789"),
 		"http://mises.com",
@@ -199,7 +201,7 @@ func TestUserSetInfo(t *testing.T) {
 
 	respInfo, err := user.GetUInfo(cuser, cuser.MisesID())
 	assert.NoError(t, err)
-	assert.True(t, respInfo.Name == "yingming")
+	assert.EqualString(t, "yingming", respInfo.Name)
 
 }
 
@@ -247,5 +249,52 @@ func TestUserParseTxResp(t *testing.T) {
 	assert.NoError(t, err)
 	msgTx, err := user.ParseTxResp(respBytes)
 	assert.NoError(t, err)
-	assert.EqualString(t, msgTx.Txhash, "123456")
+	assert.EqualString(t, "123456", msgTx.Txhash)
+}
+
+func dummyUpdate(t *testing.T, cuser types.MUser) {
+	//sessionid, _ := user.SetUInfo(cuser, &user.MisesUserInfo{})
+	encData := user.EncryptedData{
+		EncData: "ipfRvOlodErWniY/E+hHUTSn7yiw2PzOvXceQk0RsutToZIxBW+w+yDSzEI9A/1qsmhh4PPcpVzzG6eKH8mkhfajBGi7CQvLTFNjqMVeJos=",
+		IV:      "gONDIeRF2LNrq7vVDC/YXw==",
+	}
+	msg := user.MsgUpdateUserInfo{
+		MsgReqBase:  user.MsgReqBase{cuser.MisesID()},
+		PrivateInfo: encData,
+	}
+	v, _ := user.BuildPostForm(&msg, cuser)
+	user.Set2Mises(cuser, user.APIHost+user.UInfoURLPath, v)
+	//PollSession(t, sessionid)
+}
+func TestGas(t *testing.T) {
+	//user.SetTestEndpoint("http://gw.mises.site:1317/")
+	tx1, _ := base64.StdEncoding.DecodeString("Cp4DCpUDCiovbWlzZXNpZC5taXNlc3RtLm1pc2VzdG0uTXNnVXBkYXRlVXNlckluZm8S5gIKLG1pc2VzMWc3YWhoOXY0dDVodDBkenp4dGc5bTlycWp5cWdlcHp0NGZjZ2pqEP///////////wEaNmRpZDptaXNlczptaXNlczE4czBrZnBtcHR5cHF4aDl4c2NyZW4wZ3lzN25ycHh1aDVldGF2eCLYAXBaRUhsaXhTMjk0Wm5kU1dkRExabGhCbmRLZXJVODBNYVRyNjZDVldjQ2JIWU9nM1o5UUlacUNuNTZMdHNrbzhOTjU3eXBOZlZlMmFpNkIrclFiMXptR0ZZdVNsUkg3WU1wSUVrS3FkdUQzMmg1VWtaQVU3bnhEWm1CdmNCbWV6MVpXNzEwWkgyN1JyNEhCOGMyQ0JWQm9xcHJuN1I5Rzd4T29iSGRCZUt3dit2T0dJaGxUY0cydzFYNk1LVEx4WnZKRVRoeDBtbnlzM2JRK05rUHZhT3c9PSoYSVJZbDZ2RFdXMzJjRFBRcGJXM2pZUT09EgRtZW1vElgKUApGCh8vY29zbW9zLmNyeXB0by5zZWNwMjU2azEuUHViS2V5EiMKIQNqXl6rNcwnDTt+EGC8kVC8LTj6TswsC8cni/wK4YqDTRIECgIIARgkEgQQoI0GGkBTvPnZerC1v7J6+2trbZQX9/bZqLB1zQQsmVxb/NxOE0rUAUjtiSkFWOAJPJxikBEr+AB6bx7DKu+qFgIxXGug")
+	tx2, _ := base64.StdEncoding.DecodeString("Cp4DCpUDCiovbWlzZXNpZC5taXNlc3RtLm1pc2VzdG0uTXNnVXBkYXRlVXNlckluZm8S5gIKLG1pc2VzMWc3YWhoOXY0dDVodDBkenp4dGc5bTlycWp5cWdlcHp0NGZjZ2pqEP///////////wEaNmRpZDptaXNlczptaXNlczE3ajhwbGU2Z2N3eTVtYTY5a24zazVtdzB0NXpqMnY4NmV5bnltOCLYAXBaRUhsaXhTMjk0Wm5kU1dkRExabGhCbmRLZXJVODBNYVRyNjZDVldjQ2JIWU9nM1o5UUlacUNuNTZMdHNrbzhOTjU3eXBOZlZlMmFpNkIrclFiMXptR0ZZdVNsUkg3WU1wSUVrS3FkdUQzMmg1VWtaQVU3bnhEWm1CdmNCbWV6MVpXNzEwWkgyN1JyNEhCOGMyQ0JWQm9xcHJuN1I5Rzd4T29iSGRCZUt3dit2T0dJaGxUY0cydzFYNk1LVEx4WnZKRVRoeDBtbnlzM2JRK05rUHZhT3c9PSoYSVJZbDZ2RFdXMzJjRFBRcGJXM2pZUT09EgRtZW1vElgKUApGCh8vY29zbW9zLmNyeXB0by5zZWNwMjU2azEuUHViS2V5EiMKIQNqXl6rNcwnDTt+EGC8kVC8LTj6TswsC8cni/wK4YqDTRIECgIIARg4EgQQoI0GGkAGkHY713MGma0y+nQNBqujSOBDc4Ed+3dyJiBJzzkWdRBcCDuaUPYzy04anOzE2szR90UdX/gMeekeNZgg/FAN")
+	fmt.Printf("len tx1 is %d\n", len(tx1))
+	fmt.Printf("len tx2 is %d\n", len(tx2))
+	cuser := CreateUserTest()
+
+	PrepareUser(t, cuser)
+	dummyUpdate(t, cuser)
+	dummyUpdate(t, cuser)
+	dummyUpdate(t, cuser)
+	dummyUpdate(t, cuser)
+	dummyUpdate(t, cuser)
+	encData := user.EncryptedData{
+		EncData: "pZEHlixS294ZndSWdDLZlhBndKerU80MaTr66CVWcCbHYOg3Z9QIZqCn56Ltsko8NN57ypNfVe2ai6B+rQb1zmGFYuSlRH7YMpIEkKqduD32h5UkZAU7nxDZmBvcBmez1ZW710ZH27Rr4HB8c2CBVBoqprn7R9G7xOobHdBeKwv+vOGIhlTcG2w1X6MKTLxZvJEThx0mnys3bQ+NkPvaOw==",
+		IV:      "IRYl6vDWW32cDPQpbW3jYQ==",
+	}
+	msg := user.MsgUpdateUserInfo{
+		MsgReqBase:  user.MsgReqBase{cuser.MisesID()},
+		PrivateInfo: encData,
+	}
+	v, err := user.BuildPostForm(&msg, cuser)
+	sessionid, err := user.Set2Mises(cuser, user.APIHost+user.UInfoURLPath, v)
+
+	assert.NoError(t, err)
+	assert.False(t, sessionid == "")
+
+	fmt.Printf("userinfo sessionid is %s\n", sessionid)
+	PollSession(t, sessionid)
+
 }

@@ -30,6 +30,8 @@ type MsgRespBase struct {
 	Error string `json:"error,omitempty"`
 }
 type MsgTx struct {
+	Code   int    `json:"code,omitempty"`
+	RawLog string `json:"raw_log,omitempty"`
 	Height string `json:"height,omitempty"`
 	Txhash string `json:"txhash,omitempty"`
 }
