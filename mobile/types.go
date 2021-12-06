@@ -56,3 +56,9 @@ type MSdk interface {
 	CheckMnemonics(mne string) error
 	PollSessionResult() MSessionResult
 }
+
+type MLightNode interface {
+	SetEndpoint(endpoint string) error
+	Serve() error
+	SetLogLevel(level int) error
+}

@@ -75,5 +75,7 @@ func SetHomePath(dir string) error {
 	if err != nil {
 		panic(err)
 	}
+
+	NodeHome = dir + ".misestmd"
 	return nil
 }
