@@ -12,19 +12,20 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tendermint/tendermint/libs/log"
 
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/x/auth/tx"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/mises-id/mises-tm/docs"
 	"github.com/mises-id/mises-tm/x/misestm/client/rest"
+	"github.com/mises-id/sdk/types"
 )
 
 // simd light cosmoshub-3 --primary-addr http://193.26.156.221:26657/ --witness-addr http://144.76.61.201:26657/ --trusted-height 5940895 --trusted-hash 8663FBD3FB9DCE3D8E461EA521C38256F6EAF85D4FA492BAE26D5863F53CA150
-
-const (
-	FlagChainID        = "chain-id"
-	FlagNode           = "node"
-	FlagKeyringBackend = "keyring-backend"
-)
 
 func RestCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -40,9 +41,11 @@ func RestCmd() *cobra.Command {
 
 	cmd.Flags().Int(maxOpenConnectionsOpt, 900, "maximum number of simultaneous connections (including WebSocket).")
 
-	cmd.PersistentFlags().String(FlagChainID, "test", "The network chain ID")
-	cmd.PersistentFlags().String(FlagKeyringBackend, "test", "keyring")
-	cmd.PersistentFlags().String(FlagNode, "tcp://localhost:26657", "local light node")
+	cmd.PersistentFlags().String(flags.FlagChainID, "test", "The network chain ID")
+	cmd.PersistentFlags().String(flags.FlagKeyringBackend, "test", "keyring")
+	cmd.PersistentFlags().String(flags.FlagNode, "tcp://localhost:26657", "local light node")
+
+	cmd.PersistentFlags().String(flags.FlagHome, types.DefaultNodeHome, "home dir")
 
 	return cmd
 }
@@ -64,6 +67,14 @@ func runRest(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	codec := codec.NewProtoCodec(interfaceRegistry)
+	txCfg := tx.NewTxConfig(codec, tx.DefaultSignModes)
+	clientCtx = clientCtx.
+		WithAccountRetriever(authtypes.AccountRetriever{}).
+		WithCodec(codec).
+		WithInterfaceRegistry(interfaceRegistry).
+		WithTxConfig(txCfg)
 	rest.RegisterRoutes(clientCtx, rtr, true)
 	rtr.Handle("/static/mises.yml", http.FileServer(http.FS(docs.Docs)))
 	rtr.HandleFunc("/", openapiconsole.Handler("mises light", "/static/mises.yml"))

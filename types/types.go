@@ -1,6 +1,25 @@
 package types
 
-import "github.com/btcsuite/btcd/btcec"
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/btcsuite/btcd/btcec"
+)
+
+var (
+	NodeHome        string
+	DefaultNodeHome string
+)
+
+func init() {
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+
+	DefaultNodeHome = filepath.Join(userHomeDir, ".misestm")
+}
 
 const (
 	DefaultEndpoint       string = "http://localhost:1317/"

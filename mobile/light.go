@@ -3,13 +3,10 @@ package mobile
 import (
 	"context"
 	"fmt"
-	"os"
-
-	"path/filepath"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/codec/types"
+	costypes "github.com/cosmos/cosmos-sdk/codec/types"
 
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -17,23 +14,10 @@ import (
 	tmcfg "github.com/tendermint/tendermint/config"
 
 	misescmd "github.com/mises-id/sdk/cmd/commands"
+	"github.com/mises-id/sdk/types"
 )
 
 var _ MLightNode = &mLCD{}
-
-var (
-	NodeHome        string
-	DefaultNodeHome string
-)
-
-func init() {
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-
-	DefaultNodeHome = filepath.Join(userHomeDir, ".misestm")
-}
 
 type mLCD struct {
 }
@@ -43,17 +27,17 @@ func (lcd *mLCD) SetEndpoint(endpoint string) error {
 }
 
 func (lcd *mLCD) Serve() error {
-	_, err := CreateDefaultTendermintConfig(NodeHome)
+	_, err := CreateDefaultTendermintConfig(types.NodeHome)
 	if err != nil {
 		return err
 	}
 
-	interfaceRegistry := types.NewInterfaceRegistry()
+	interfaceRegistry := costypes.NewInterfaceRegistry()
 	codec := codec.NewProtoCodec(interfaceRegistry)
 	txCfg := tx.NewTxConfig(codec, tx.DefaultSignModes)
 	clientCtx := client.Context{}.
 		WithCodec(codec).
-		WithHomeDir(NodeHome).
+		WithHomeDir(types.NodeHome).
 		WithTxConfig(txCfg).
 		WithAccountRetriever(auth.AccountRetriever{})
 
@@ -68,7 +52,7 @@ func (lcd *mLCD) Serve() error {
 		"--witness-addr=http://e2.mises.site:26657",
 		"--trusted-height=582507",
 		"--trusted-hash=3F541BDF3CF2CE414FB4A3FAF90931101C4ABD31093239AC7E7A787B3E387230",
-		"--dir=" + NodeHome + "-light",
+		"--dir=" + types.NodeHome + "-light",
 	})
 
 	err = cmd.ExecuteContext(ctx)

@@ -24,6 +24,7 @@ import (
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	dbm "github.com/tendermint/tm-db"
+	_ "github.com/tendermint/tm-db/metadb"
 )
 
 // simd light cosmoshub-3 --primary-addr http://193.26.156.221:26657/ --witness-addr http://144.76.61.201:26657/ --trusted-height 5940895 --trusted-hash 8663FBD3FB9DCE3D8E461EA521C38256F6EAF85D4FA492BAE26D5863F53CA150
