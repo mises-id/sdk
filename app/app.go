@@ -6,9 +6,9 @@ package app
 
 type MisesApp struct {
 	MApp
-	appDId    string
-	appDomain string
-	auths     []MisesAuth
+	appDId     string
+	appDomains []string
+	auths      []MisesAuth
 }
 
 type MisesAuth struct {
@@ -18,14 +18,14 @@ type MisesAuth struct {
 }
 
 const (
-	MisesDiscover = "mises.site"
+	MisesDiscover              = "mises.site"
 	defaultExpirationInSeconds = 120
 )
 
 type MApp interface {
 	AppDID() string
-	AppDomain() string
-	SetAppDomain(string)
+	AppDomains() []string
+	SetAppDomains([]string)
 
 	IsRegistered() bool
 	Register(MAppInfo string, appDid string) error
@@ -36,9 +36,9 @@ type MApp interface {
 type MAppInfo interface {
 	ApppDid() string //did:mises:0123456789abcdef
 	AppName() string //
-	IconDid() string //udid of icon file did:mises:0123456789abcdef/icon
-	IconThumb() []byte
-	Domain() string //app
+	IconURL() string
+	HomeURL() string
+	Domains() []string //app
 	Developer() string
 }
 
@@ -46,12 +46,12 @@ func (app *MisesApp) AppDID() string {
 	return app.appDId
 }
 
-func (app *MisesApp) AppDomain() string {
-	return app.appDomain
+func (app *MisesApp) AppDomains() []string {
+	return app.appDomains
 }
 
 func (app *MisesApp) SetAppDomain(domain string) {
-	app.appDomain = domain
+	app.appDomains = append(app.appDomains, domain)
 }
 
 func (app *MisesApp) AddAuth(misesId string, permissions []string) {

@@ -1,7 +1,7 @@
 package main
 
 import (
-	cmd "github.com/mises-id/sdk/cmd/commands"
+	cmd "github.com/mises-id/sdk/client/cli/commands"
 	"github.com/mises-id/sdk/types"
 	"github.com/tendermint/tendermint/libs/cli"
 

@@ -59,6 +59,7 @@ type MSdk interface {
 
 type MLightNode interface {
 	SetEndpoint(endpoint string) error
+	ServeRestApi() error
 	Serve() error
 	SetLogLevel(level int) error
 }

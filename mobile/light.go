@@ -13,7 +13,8 @@ import (
 
 	tmcfg "github.com/tendermint/tendermint/config"
 
-	misescmd "github.com/mises-id/sdk/cmd/commands"
+	misescmd "github.com/mises-id/sdk/client/cli/commands"
+	sdkrest "github.com/mises-id/sdk/client/rest"
 	"github.com/mises-id/sdk/types"
 )
 
@@ -24,6 +25,34 @@ type mLCD struct {
 
 func (lcd *mLCD) SetEndpoint(endpoint string) error {
 	return nil
+}
+
+func (lcd *mLCD) ServeRestApi() error {
+	_, err := CreateDefaultTendermintConfig(types.NodeHome)
+	if err != nil {
+		return err
+	}
+
+	interfaceRegistry := costypes.NewInterfaceRegistry()
+	codec := codec.NewProtoCodec(interfaceRegistry)
+	txCfg := tx.NewTxConfig(codec, tx.DefaultSignModes)
+	clientCtx := client.Context{}.
+		WithCodec(codec).
+		WithHomeDir(types.NodeHome).
+		WithTxConfig(txCfg).
+		WithAccountRetriever(auth.AccountRetriever{}).
+		WithInput(sdkrest.KeyringPass).
+		WithKeyringDir("keyring")
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
+	cmd := misescmd.RestCmd()
+	cmd.SetArgs([]string{
+		"--chain-id=mises",
+	})
+
+	err = cmd.ExecuteContext(ctx)
+	return err
 }
 
 func (lcd *mLCD) Serve() error {
@@ -45,7 +74,7 @@ func (lcd *mLCD) Serve() error {
 	ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
 	cmd := misescmd.LightCmd()
 	cmd.SetArgs([]string{
-		"test",
+		"mises",
 		"--listening-address=tcp://0.0.0.0:26657",
 		"--log-level=trace",
 		"--primary-addr=http://e1.mises.site:26657",

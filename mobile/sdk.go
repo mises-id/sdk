@@ -76,6 +76,6 @@ func SetHomePath(dir string) error {
 		panic(err)
 	}
 
-	types.NodeHome = dir + ".misestmd"
+	types.NodeHome = dir + ".misestm"
 	return nil
 }

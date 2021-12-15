@@ -93,7 +93,14 @@ func RandomMnemonics() (string, error) {
 }
 
 func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
-	if site != sdk.app.AppDomain() {
+	var valid bool = false
+	for _, domain := range sdk.app.AppDomains() {
+		if site == domain {
+			valid = true
+			break
+		}
+	}
+	if !valid {
 		return "", fmt.Errorf("only mises discover supported")
 	}
 	auser := sdk.userMgr.ActiveUser()
