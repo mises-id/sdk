@@ -61,10 +61,14 @@ func RestCmd() *cobra.Command {
 }
 func RegisterRoutes(clientCtx client.Context, rtr *mux.Router) {
 	r := clientrest.WithHTTPDeprecationHeaders(rtr)
+	r.HandleFunc("/misessdk/user/active", sdkrest.HandleUserActiveRequest(clientCtx)).Methods(MethodGet)
+	r.HandleFunc("/misessdk/social/forward", sdkrest.HandleSocialForwardRequest(clientCtx)).Methods(MethodPost)
+
 	r.HandleFunc("/misessdk/keys", sdkrest.HandleKeysListRequest(clientCtx)).Methods(MethodGet)
 	r.HandleFunc("/misessdk/keys/import", sdkrest.HandleKeysImportRequest(clientCtx)).Methods(MethodPost)
 	r.HandleFunc("/misessdk/keys/delete", sdkrest.HandleKeysDeleteRequest(clientCtx)).Methods(MethodPost)
 	r.HandleFunc("/misessdk/keys/activate", sdkrest.HandleKeysActivateRequest(clientCtx)).Methods(MethodPost)
+	r.HandleFunc("/misessdk/keys/reset", sdkrest.HandleKeysResetRequest(clientCtx)).Methods(MethodPost)
 
 	r.HandleFunc("/misessdk/keys/rest", sdkrest.HandleKeysResetRequest(clientCtx)).Methods(MethodPost)
 }
@@ -96,7 +100,7 @@ func runRest(cmd *cobra.Command, args []string) error {
 		WithInterfaceRegistry(interfaceRegistry).
 		WithTxConfig(txCfg).
 		WithInput(sdkrest.KeyringPass).
-		WithKeyringDir("keyring")
+		WithKeyringDir(types.NodeHome + "/keyring")
 	keyring, err := client.NewKeyringFromBackend(clientCtx, keyring.BackendFile)
 	if err != nil {
 		return err

@@ -183,6 +183,7 @@ func HandleKeysResetRequest(clientCtx client.Context) http.HandlerFunc {
 			return
 		}
 
+		KeyActivated = nil
 		resp := &RestKeysResponse{
 			Code: 0,
 		}

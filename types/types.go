@@ -19,6 +19,7 @@ func init() {
 	}
 
 	DefaultNodeHome = filepath.Join(userHomeDir, ".misestm")
+	NodeHome = DefaultNodeHome
 }
 
 const (
@@ -43,9 +44,8 @@ type MSdk interface {
 type MUserInfo interface {
 	Name() string
 	Gender() string
-	AvatarDid() string   //did of avatar file did:mises:0123456789abcdef/avatar
-	AvatarThumb() []byte //avatar thumb is a bitmap
-	HomePage() string    //url
+	Avatar() string   //url of avatar
+	HomePage() string //url of homepage
 	Emails() []string
 	Telphones() []string
 	Intro() string

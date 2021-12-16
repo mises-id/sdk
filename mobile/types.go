@@ -12,9 +12,8 @@ type MUserList interface {
 type MUserInfo interface {
 	Name() string
 	Gender() string
-	AvatarDid() string    //did of avatar file did:mises:0123456789abcdef/avatar
-	AavatarThumb() []byte //avatar thumb is a bitmap
-	HomePage() string     //url
+	Avatar() string   //url
+	HomePage() string //url
 	Emails() MStringList
 	Telphones() MStringList
 	Intro() string

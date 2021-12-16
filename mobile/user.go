@@ -25,11 +25,8 @@ func (w *mUserInfoWrapper) Name() string {
 func (w *mUserInfoWrapper) Gender() string {
 	return w.info.Gender()
 }
-func (w *mUserInfoWrapper) AvatarDid() string {
-	return w.info.AvatarDid()
-}
-func (w *mUserInfoWrapper) AavatarThumb() []byte {
-	return w.info.AvatarThumb()
+func (w *mUserInfoWrapper) Avatar() string {
+	return w.info.Avatar()
 }
 func (w *mUserInfoWrapper) HomePage() string {
 	return w.info.HomePage()
@@ -60,8 +57,7 @@ func (w *mUserWrapper) SetInfo(info MUserInfo) (string, error) {
 	minfo := user.NewMisesUserInfoReadonly(
 		info.Name(),
 		info.Gender(),
-		info.AvatarDid(),
-		info.AavatarThumb(),
+		info.Avatar(),
 		info.HomePage(),
 		mStringListToSlice(info.Emails()),
 		mStringListToSlice(info.Telphones()),
@@ -108,7 +104,10 @@ func (w *mUserMgrWrapper) SetActiveUser(userDid string, passPhrase string) error
 			if err != nil {
 				return err
 			}
-			w.MUserMgr.SetActiveUser(userDid)
+			err = w.MUserMgr.SetActiveUser(userDid)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -125,8 +124,7 @@ func (w *mUserMgrWrapper) ActiveUser() MUser {
 func NewMUserInfo(
 	name string,
 	gender string,
-	avatarDid string,
-	avatarThumb []byte,
+	avatar string,
 	homePage string,
 	emails MStringList,
 	telphones MStringList,
@@ -134,8 +132,7 @@ func NewMUserInfo(
 	info := user.NewMisesUserInfoReadonly(
 		name,
 		gender,
-		avatarDid,
-		avatarThumb,
+		avatar,
 		homePage,
 		mStringListToSlice(emails),
 		mStringListToSlice(telphones),

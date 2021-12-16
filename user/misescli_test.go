@@ -184,8 +184,7 @@ func TestUserSetInfo(t *testing.T) {
 	info := user.MisesUserInfo{
 		"yingming",
 		"male",
-		"007",
-		[]byte("123456789"),
+		"ipfs://asdasdasdadsa",
 		"http://mises.com",
 		[]string{"yingming@gmail.com", "51911267@qq.com"},
 		[]string{"17701314608", "18601350799", "18811790787"},
