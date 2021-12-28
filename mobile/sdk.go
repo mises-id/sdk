@@ -6,8 +6,8 @@ import (
 
 	"github.com/mises-id/sdk"
 	"github.com/mises-id/sdk/bip39"
+	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
-	"github.com/mises-id/sdk/user"
 )
 
 var _ MSdk = &mSdkWrapper{}
@@ -29,7 +29,7 @@ func (w *mSdkWrapper) Login(site string, permissions MStringList) (string, error
 	return w.MSdk.Login(site, mStringListToSlice(permissions))
 }
 func (w *mSdkWrapper) RandomMnemonics() (string, error) {
-	return sdk.RandomMnemonics()
+	return misesid.RandomMnemonics()
 }
 func (w *mSdkWrapper) CheckMnemonics(mne string) error {
 	_, err := bip39.Mnemonic2ByteArray(mne)
@@ -37,7 +37,7 @@ func (w *mSdkWrapper) CheckMnemonics(mne string) error {
 }
 
 type mSessionResultWrapper struct {
-	user.WaitResult
+	misesid.WaitResult
 }
 
 func (w *mSessionResultWrapper) SessionID() string {
@@ -54,14 +54,14 @@ func (w *mSessionResultWrapper) Success() bool {
 }
 
 func (w *mSdkWrapper) PollSessionResult() MSessionResult {
-	wr, err := user.PollSessionResult(2 * time.Second)
+	wr, err := misesid.PollSessionResult(2 * time.Second)
 	if err != nil {
 		return nil
 	}
 	return &mSessionResultWrapper{*wr}
 }
 func (w *mSdkWrapper) SetTestEndpoint(endpoint string) error {
-	return user.SetTestEndpoint(endpoint)
+	return misesid.SetTestEndpoint(endpoint)
 }
 
 func NewMSdk() MSdk {

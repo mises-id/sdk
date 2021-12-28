@@ -1,4 +1,4 @@
-package user
+package misesid
 
 type MsgReqBase struct {
 	MisesID string `json:"mises_id,omitempty"`
@@ -62,7 +62,7 @@ type MsgGetUserInfoResp struct {
 	PrivateInfo EncryptedData `json:"pri_info,omitempty"`
 }
 
-type MsgGetUserResp struct {
+type MsgGetMisesIDResp struct {
 	MsgRespBase
 	PubKey string `json:"pub_key,omitempty"`
 }

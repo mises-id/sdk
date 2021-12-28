@@ -1,8 +1,8 @@
 package mobile
 
 import (
+	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
-	"github.com/mises-id/sdk/user"
 )
 
 var _ MUserInfo = &mUserInfoWrapper{}
@@ -44,17 +44,11 @@ func (w *mUserInfoWrapper) Intro() string {
 func (w *mUserWrapper) MisesID() string {
 	return w.MUser.MisesID()
 }
-func (w *mUserWrapper) PubKEY() string {
-	return w.MUser.PubKEY()
-}
-func (w *mUserWrapper) PrivKEY() string {
-	return w.MUser.PrivKEY()
-}
 func (w *mUserWrapper) Info() MUserInfo {
 	return &mUserInfoWrapper{info: w.MUser.Info()}
 }
 func (w *mUserWrapper) SetInfo(info MUserInfo) (string, error) {
-	minfo := user.NewMisesUserInfoReadonly(
+	minfo := misesid.NewMisesUserInfoReadonly(
 		info.Name(),
 		info.Gender(),
 		info.Avatar(),
@@ -76,9 +70,6 @@ func (w *mUserWrapper) LoadKeyStore(passPhrase string) error {
 }
 func (w *mUserWrapper) IsRegistered() error {
 	return w.MUser.IsRegistered()
-}
-func (w *mUserWrapper) Register(appDid string) (string, error) {
-	return w.MUser.Register(appDid)
 }
 
 func (w *mUserMgrWrapper) CreateUser(mnemonic string, passPhrase string) (MUser, error) {
@@ -129,7 +120,7 @@ func NewMUserInfo(
 	emails MStringList,
 	telphones MStringList,
 	intro string) MUserInfo {
-	info := user.NewMisesUserInfoReadonly(
+	info := misesid.NewMisesUserInfoReadonly(
 		name,
 		gender,
 		avatar,

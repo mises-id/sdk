@@ -14,7 +14,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/query"
 
 	"github.com/cosmos/cosmos-sdk/types/rest"
-	misesrest "github.com/mises-id/mises-tm/x/misestm/client/rest"
 )
 
 var (
@@ -28,6 +27,7 @@ type PassReader struct {
 
 func (r *PassReader) Read(p []byte) (n int, err error) {
 	n = copy(p, []byte(r.Pass))
+	n += copy(p[n:], []byte("\n"))
 	return
 }
 
@@ -40,7 +40,8 @@ type MisesKey struct {
 type RestKeysRequest struct {
 	Name       string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Passphrase string `protobuf:"bytes,2,opt,name=passphrase,proto3" json:"passphrase,omitempty"`
-	PriKey     string `protobuf:"bytes,3,opt,name=pri_key,json=priKey,proto3" json:"pri_key,omitempty"`
+	PriKey     string `protobuf:"bytes,3,opt,name=pri_key,json=pri_key,proto3" json:"pri_key,omitempty"`
+	Sig        string `json:"sig,omitempty"`
 }
 
 type RestKeysResponse struct {
@@ -220,7 +221,6 @@ func HandleKeysActivateRequest(clientCtx client.Context) http.HandlerFunc {
 				Address: info.GetAddress().String(),
 			}
 			clientCtx = clientCtx.WithFromName(KeyActivated.Name).WithFromAddress(types.AccAddress(KeyActivated.Address))
-			misesrest.StarSeqGenerator(clientCtx)
 		}
 
 		resp := &RestKeysResponse{

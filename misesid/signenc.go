@@ -1,48 +1,39 @@
-package user
+package misesid
 
 import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/mises-id/sdk/misesid"
+	"github.com/cosmos/btcutil/bech32"
 	"github.com/mises-id/sdk/types"
+	"golang.org/x/crypto/ripemd160"
 )
 
-var sep = "&"
-
-// sign msg using user's private key
-func Sign(cuser types.MUser, msg string) (string, string, error) {
-	privKey := cuser.PrivateKey()
-	if privKey == nil {
-		return "", "", fmt.Errorf("private key or public key not available")
-	}
-
-	t := strconv.FormatInt(time.Now().UTC().Unix(), 10)
-	msg = msg + sep + t
-	/*
-		dt, err := hex.DecodeString(msg)
-		if err != nil {
-			return "", err
-		}
-	*/
-	mhash := sha256.Sum256([]byte(msg))
-
-	sig, err := privKey.Sign(mhash[:])
+func CheckMisesID(misesID string, pubKeyStr string) error {
+	publicKeyBytes, err := hex.DecodeString(pubKeyStr)
 	if err != nil {
-		return "", "", err
+		return err
+	}
+	if len(publicKeyBytes) != btcec.PubKeyBytesLenCompressed {
+		return fmt.Errorf("pubkey length not 33")
 	}
 
-	derString := sig.Serialize()
+	mid, err := ConvertAndEncode(
+		types.AddressPrefix,
+		PubKeyAddrBytes(publicKeyBytes),
+	)
+	if err != nil {
+		return err
+	}
+	if types.MisesIDPrefix+mid != misesID && types.MisesAppIDPrefix+mid != misesID {
+		return fmt.Errorf("mises_id[%s] not matching pubkey[%s]", misesID, pubKeyStr)
+	}
+	return nil
 
-	signed := hex.EncodeToString(derString)
-
-	return signed, t, nil
 }
 
 // verify msg is sent by user who has the private key
@@ -50,7 +41,7 @@ func Verify(msg string, pubKeyStr string, sigStr string) error {
 	mhash := sha256.Sum256([]byte(msg))
 	publicKeyBytes, err := hex.DecodeString(pubKeyStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("can not parse signature")
 	}
 	pubKey, err := btcec.ParsePubKey(publicKeyBytes, btcec.S256())
 	if err != nil {
@@ -107,21 +98,13 @@ func parseSigned(signed string) (*btcec.PublicKey, []byte, *btcec.Signature, err
 	return pubKey, mhash, sig, nil
 }
 
-func AesKey(cuser types.MUser) ([]byte, error) {
-	privKey := cuser.PrivKEY()
-	if privKey == "" {
-		return nil, fmt.Errorf("private key or public key not available")
-	}
-	mhash := sha256.Sum256([]byte(privKey))
-	return mhash[:], nil
-}
-func Encrypt(cuser types.MUser, msg []byte) (string, string, error) {
-	keyByte, err := AesKey(cuser)
+func Encrypt(cuser types.MSigner, msg []byte) (string, string, error) {
+	keyByte, err := cuser.AesKey()
 
 	if err != nil {
 		return "", "", err
 	}
-	cipherByte, ivByte, err := misesid.AesEncrypt(msg, keyByte)
+	cipherByte, ivByte, err := AesEncrypt(msg, keyByte)
 	if err != nil {
 		return "", "", err
 	}
@@ -132,8 +115,8 @@ func Encrypt(cuser types.MUser, msg []byte) (string, string, error) {
 
 }
 
-func Decrypt(cuser types.MUser, encData string, iv string) ([]byte, error) {
-	keyByte, err := AesKey(cuser)
+func Decrypt(cuser types.MSigner, encData string, iv string) ([]byte, error) {
+	keyByte, err := cuser.AesKey()
 
 	if err != nil {
 		return nil, err
@@ -148,9 +131,26 @@ func Decrypt(cuser types.MUser, encData string, iv string) ([]byte, error) {
 		return nil, err
 	}
 
-	msgByte, err := misesid.AesDecrypt(cipherByte, keyByte, ivByte)
+	msgByte, err := AesDecrypt(cipherByte, keyByte, ivByte)
 	if err != nil {
 		return nil, err
 	}
 	return msgByte, nil
+}
+
+func PubKeyAddrBytes(pubkey []byte) []byte {
+	sha := sha256.Sum256(pubkey)
+	hasherRIPEMD160 := ripemd160.New()
+	hasherRIPEMD160.Write(sha[:]) // does not error
+	pubKeyAddrBytes := hasherRIPEMD160.Sum(nil)
+	return pubKeyAddrBytes
+}
+
+func ConvertAndEncode(hrp string, data []byte) (string, error) {
+	converted, err := bech32.ConvertBits(data, 8, 5, true)
+	if err != nil {
+		return "", fmt.Errorf("encoding bech32 failed: %w", err)
+	}
+
+	return bech32.Encode(hrp, converted)
 }

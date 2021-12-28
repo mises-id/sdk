@@ -21,13 +21,42 @@ import (
 var _ MLightNode = &mLCD{}
 
 type mLCD struct {
+	token            string
+	chainId          string
+	primaryAddress   string
+	witnessAddresses string
+	trustHeight      string
+	trustHash        string
 }
 
-func (lcd *mLCD) SetEndpoint(endpoint string) error {
+func (lcd *mLCD) GetActiveMisesID() string {
+	if sdkrest.KeyActivated != nil {
+		return types.MisesIDPrefix + sdkrest.KeyActivated.Address
+	}
+
+	return ""
+}
+func (lcd *mLCD) ForwardURL(comment string, title string, link string, iconUrl string) error {
+
 	return nil
 }
 
-func (lcd *mLCD) ServeRestApi() error {
+func (lcd *mLCD) SetChainID(chainId string) error {
+	lcd.chainId = chainId
+	return nil
+}
+func (lcd *mLCD) SetEndpoints(primary string, witnesses string) error {
+	lcd.primaryAddress = primary
+	lcd.witnessAddresses = witnesses
+	return nil
+}
+func (lcd *mLCD) SetTrust(height string, hash string) error {
+	lcd.trustHeight = height
+	lcd.trustHash = hash
+	return nil
+}
+
+func (lcd *mLCD) ServeRestApi(listen string) error {
 	_, err := CreateDefaultTendermintConfig(types.NodeHome)
 	if err != nil {
 		return err
@@ -48,14 +77,16 @@ func (lcd *mLCD) ServeRestApi() error {
 	ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
 	cmd := misescmd.RestCmd()
 	cmd.SetArgs([]string{
-		"--chain-id=mises",
+		"--chain-id=" + lcd.chainId,
+		"--listening-address=" + listen,
+		"--log-level=trace",
 	})
 
 	err = cmd.ExecuteContext(ctx)
 	return err
 }
 
-func (lcd *mLCD) Serve() error {
+func (lcd *mLCD) Serve(listen string) error {
 	_, err := CreateDefaultTendermintConfig(types.NodeHome)
 	if err != nil {
 		return err
@@ -74,13 +105,13 @@ func (lcd *mLCD) Serve() error {
 	ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
 	cmd := misescmd.LightCmd()
 	cmd.SetArgs([]string{
-		"mises",
-		"--listening-address=tcp://0.0.0.0:26657",
+		lcd.chainId,
+		"--listening-address=" + listen,
 		"--log-level=trace",
-		"--primary-addr=http://e1.mises.site:26657",
-		"--witness-addr=http://e2.mises.site:26657",
-		"--trusted-height=582507",
-		"--trusted-hash=3F541BDF3CF2CE414FB4A3FAF90931101C4ABD31093239AC7E7A787B3E387230",
+		"--primary-addr=" + lcd.primaryAddress,   //http://e1.mises.site:26657
+		"--witness-addr=" + lcd.witnessAddresses, //http://e2.mises.site:26657
+		"--trusted-height=" + lcd.trustHeight,    //963312
+		"--trusted-hash=" + lcd.trustHash,        //219B062359064E5A00062624062D775C63AFFEC96361B40894F3C7B81437A660
 		"--dir=" + types.NodeHome + "-light",
 	})
 
@@ -102,8 +133,4 @@ func CreateDefaultTendermintConfig(rootDir string) (*tmcfg.Config, error) {
 	}
 
 	return conf, nil
-}
-
-func NewMLightNode() MLightNode {
-	return &mLCD{}
 }

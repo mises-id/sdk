@@ -21,15 +21,12 @@ type MUserInfo interface {
 
 type MUser interface {
 	MisesID() string
-	PubKEY() string
-	PrivKEY() string
 	Info() MUserInfo
 	SetInfo(info MUserInfo) (string, error)
 	GetFollow(appDid string) MStringList
 	SetFollow(followingDid string, op bool, appDid string) (string, error)
 	LoadKeyStore(passPhrase string) error
 	IsRegistered() error
-	Register(appDid string) (string, error)
 }
 
 type MUserMgr interface {
@@ -57,8 +54,13 @@ type MSdk interface {
 }
 
 type MLightNode interface {
-	SetEndpoint(endpoint string) error
-	ServeRestApi() error
-	Serve() error
+	GetActiveMisesID() string
+	ForwardURL(comment string, title string, link string, iconUrl string) error
+
+	SetChainID(chainId string) error
+	SetEndpoints(primary string, witnesses string) error
+	SetTrust(height string, hash string) error
+	ServeRestApi(listen string) error
+	Serve(listen string) error
 	SetLogLevel(level int) error
 }

@@ -1,4 +1,4 @@
-package user
+package misesid
 
 import "github.com/mises-id/sdk/types"
 

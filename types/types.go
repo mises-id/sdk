@@ -3,8 +3,6 @@ package types
 import (
 	"os"
 	"path/filepath"
-
-	"github.com/btcsuite/btcd/btcec"
 )
 
 var (
@@ -27,6 +25,7 @@ const (
 	DefaultChainID        string = "mises"
 	AddressPrefix         string = "mises"
 	MisesIDPrefix                = "did:mises:"
+	MisesAppIDPrefix             = "did:misesapp:"
 	ErrorInvalidLeaseTime string = "Invalid lease time"
 	ErrorKeyIsRequired    string = "Key is required"
 	ErrorValueIsRequired  string = "Value is required"
@@ -52,10 +51,6 @@ type MUserInfo interface {
 }
 type MUser interface {
 	MisesID() string
-	PubKEY() string
-	PrivKEY() string
-	PrivateKey() *btcec.PrivateKey
-	PublicKey() *btcec.PublicKey
 	Info() MUserInfo
 	GetFollow(appDid string) []string
 	LoadKeyStore(passPhrase string) error
@@ -63,7 +58,8 @@ type MUser interface {
 
 	SetInfo(info MUserInfo) (string, error)
 	SetFollow(followingId string, op bool, appDid string) (string, error)
-	Register(appDid string) (string, error)
+
+	Signer() MSigner
 }
 
 type MUserMgr interface {
@@ -72,6 +68,34 @@ type MUserMgr interface {
 	AddUser(user MUser)
 	SetActiveUser(userDid string) error
 	ActiveUser() MUser
+}
+
+type MSigner interface {
+	MisesID() string
+	Sign(msg string) (string, error)
+	PubKey() string
+	AesKey() ([]byte, error)
+}
+
+type MApp interface {
+	MisesID() string //did:misesapp:0123456789abcdef
+	Info() MAppInfo
+
+	Init(chainID string, passPhrase string) error
+
+	AddAuth(misesUID string, permissions []string)
+
+	RegisterUser(misesUID string, userPubKey string) error
+
+	Signer() MSigner
+}
+
+type MAppInfo interface {
+	AppName() string //
+	IconURL() string
+	HomeURL() string
+	Domains() []string //app
+	Developer() string
 }
 
 /*

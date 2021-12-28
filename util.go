@@ -32,7 +32,7 @@ func validateKey(key string) error {
 	return nil
 }
 
-func makeRandomString(length int) string {
+func MakeRandomString(length int) string {
 	rand.Seed(time.Now().UnixNano())
 	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 	var b strings.Builder

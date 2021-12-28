@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"os"
 
+	"html/template"
+
 	"github.com/gorilla/mux"
 
-	"github.com/tendermint/spm/openapiconsole"
 	tmrpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 
 	"github.com/spf13/cobra"
@@ -19,8 +20,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-
-	clientrest "github.com/cosmos/cosmos-sdk/client/rest"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
@@ -59,18 +58,20 @@ func RestCmd() *cobra.Command {
 
 	return cmd
 }
-func RegisterRoutes(clientCtx client.Context, rtr *mux.Router) {
-	r := clientrest.WithHTTPDeprecationHeaders(rtr)
-	r.HandleFunc("/misessdk/user/active", sdkrest.HandleUserActiveRequest(clientCtx)).Methods(MethodGet)
-	r.HandleFunc("/misessdk/social/forward", sdkrest.HandleSocialForwardRequest(clientCtx)).Methods(MethodPost)
 
-	r.HandleFunc("/misessdk/keys", sdkrest.HandleKeysListRequest(clientCtx)).Methods(MethodGet)
-	r.HandleFunc("/misessdk/keys/import", sdkrest.HandleKeysImportRequest(clientCtx)).Methods(MethodPost)
-	r.HandleFunc("/misessdk/keys/delete", sdkrest.HandleKeysDeleteRequest(clientCtx)).Methods(MethodPost)
-	r.HandleFunc("/misessdk/keys/activate", sdkrest.HandleKeysActivateRequest(clientCtx)).Methods(MethodPost)
-	r.HandleFunc("/misessdk/keys/reset", sdkrest.HandleKeysResetRequest(clientCtx)).Methods(MethodPost)
+// Handler returns an http handler that servers OpenAPI console for an OpenAPI spec at specURL.
+func OpenapiHandler(title, specURL string) http.HandlerFunc {
+	t, _ := template.ParseFS(docs.Docs, "static/openapi.tpl")
 
-	r.HandleFunc("/misessdk/keys/rest", sdkrest.HandleKeysResetRequest(clientCtx)).Methods(MethodPost)
+	return func(w http.ResponseWriter, req *http.Request) {
+		_ = t.Execute(w, struct {
+			Title string
+			URL   string
+		}{
+			title,
+			specURL,
+		})
+	}
 }
 
 func runRest(cmd *cobra.Command, args []string) error {
@@ -100,17 +101,19 @@ func runRest(cmd *cobra.Command, args []string) error {
 		WithInterfaceRegistry(interfaceRegistry).
 		WithTxConfig(txCfg).
 		WithInput(sdkrest.KeyringPass).
-		WithKeyringDir(types.NodeHome + "/keyring")
+		WithKeyringDir(types.NodeHome + "/sdk-keyring")
 	keyring, err := client.NewKeyringFromBackend(clientCtx, keyring.BackendFile)
 	if err != nil {
 		return err
 	}
 	clientCtx = clientCtx.WithKeyring(keyring)
-	rest.RegisterRoutes(clientCtx, rtr, true)
-	RegisterRoutes(clientCtx, rtr)
+	rest.RegisterRoutes(clientCtx, rtr)
 
+	rtr.Handle("/static/swagger-ui-dist@3.40.0/favicon-16x16.png", http.FileServer(http.FS(docs.Docs)))
+	rtr.Handle("/static/swagger-ui-dist@3.40.0/swagger-ui-bundle.js", http.FileServer(http.FS(docs.Docs)))
+	rtr.Handle("/static/swagger-ui-dist@3.40.0/swagger-ui.css", http.FileServer(http.FS(docs.Docs)))
 	rtr.Handle("/static/mises.yml", http.FileServer(http.FS(docs.Docs)))
-	rtr.HandleFunc("/", openapiconsole.Handler("mises light", "/static/mises.yml"))
+	rtr.HandleFunc("/", OpenapiHandler("mises light", "/static/mises.yml"))
 
 	tmCfg := tmrpcserver.DefaultConfig()
 	maxOpenConnections, err := cmd.Flags().GetInt(maxOpenConnectionsOpt)
