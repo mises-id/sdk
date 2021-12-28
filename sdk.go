@@ -115,11 +115,11 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 
 	return v.Encode(), nil
 }
-func (sdk *misesSdk) VerifyLogin(auth string) (string, error) {
+func (sdk *misesSdk) VerifyLogin(auth string) (string, string, error) {
 
 	v, err := url.ParseQuery(auth)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	misesID := v.Get("mises_id")
 	sigStr := v.Get("sig")
@@ -127,13 +127,13 @@ func (sdk *misesSdk) VerifyLogin(auth string) (string, error) {
 	pubKeyStr := v.Get("pubkey")
 
 	if err := misesid.CheckMisesID(misesID, pubKeyStr); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if err := misesid.Verify("mises_id="+misesID+"&nonce="+nonce, pubKeyStr, sigStr); err != nil {
-		return "", err
+		return "", "", err
 	}
-	return misesID, nil
+	return misesID, pubKeyStr, nil
 }
 
 func (sdk *misesSdk) UserMgr() types.MUserMgr {

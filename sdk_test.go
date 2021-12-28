@@ -87,7 +87,7 @@ func TestSdkNewForUesr(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
 	sApp, _ := sdk.NewSdkForApp(mo)
 
-	mid, err := sApp.VerifyLogin(auth)
+	mid, _, err := sApp.VerifyLogin(auth)
 	assert.NoError(t, err)
 	assert.True(t, mid == u.MisesID())
 
@@ -100,7 +100,7 @@ func TestSdkVerifyLogin(t *testing.T) {
 	sApp, _ := sdk.NewSdkForApp(mo)
 	auth := "mises_id=did:mises:mises1y53kz80x5gm2w0ype8x7a3w6sstztxxg7qkl5n&nonce=0123456789&sig=304402201ada63a9dccc8ace5b3c96b00817311a36096c997e081b57f8b39b2392a51905022041e74283ec05333062a3a7180ba2775b5e203e596c3cefd8b92b775b519b7e06&pubkey=03e78b0e4bddddabd37bca173c9df270096ec55aa97bed2ba82d72c830d400c8e5"
 
-	mid, err := sApp.VerifyLogin(auth)
+	mid, _, err := sApp.VerifyLogin(auth)
 	assert.NoError(t, err)
 	assert.True(t, mid == "did:mises:mises1y53kz80x5gm2w0ype8x7a3w6sstztxxg7qkl5n")
 

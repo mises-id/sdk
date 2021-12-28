@@ -37,7 +37,7 @@ type MSdk interface {
 	TestConnection() error
 	SetLogLevel(level int) error
 	Login(site string, permissions []string) (string, error)
-	VerifyLogin(auth string) (string, error)
+	VerifyLogin(auth string) (string, string, error)
 }
 
 type MUserInfo interface {
