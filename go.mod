@@ -10,6 +10,7 @@ require (
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/gorilla/mux v1.8.0
 	github.com/mises-id/mises-tm v0.0.0-20210821062909-5f9ffc470b61
+	github.com/multiformats/go-multibase v0.0.3 // indirect
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0
 	github.com/tendermint/tendermint v0.34.14

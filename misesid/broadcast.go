@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -18,6 +17,7 @@ import (
 	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
 	"github.com/cosmos/cosmos-sdk/x/feegrant"
 	"github.com/mises-id/mises-tm/x/misestm/types"
+	multibase "github.com/multiformats/go-multibase"
 )
 
 type SeqInfo struct {
@@ -235,13 +235,17 @@ func CreateDid(clientCtx client.Context, pubKeyHex string, misesID string) (*sdk
 	if err != nil {
 		return nil, err
 	}
+	pubKeyMultiBase, err := multibase.Encode(multibase.Base58BTC, pubKeyBytes)
+	if err != nil {
+		return nil, err
+	}
 
 	msg := types.NewMsgCreateDidRegistry(
 		clientCtx.FromAddress.String(),
 		misesID,
 		misesID+"#key0",
 		"EcdsaSecp256k1VerificationKey2019", // will shift to Ed25519VerificationKey2020
-		base58.Encode(pubKeyBytes),
+		pubKeyMultiBase,
 		0,
 	)
 	if err := msg.ValidateBasic(); err != nil {
