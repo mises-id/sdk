@@ -84,6 +84,10 @@ func (sdk *misesSdk) EnsureApp(info types.MAppInfo) (types.MApp, error) {
 	return &app, nil
 }
 
+func (sdk *misesSdk) SetEndpoint(endpoint string) error {
+	return misesid.SetTestEndpoint(endpoint)
+}
+
 func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 	var valid bool = false
 	for _, domain := range sdk.app.Info().Domains() {

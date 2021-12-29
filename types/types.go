@@ -35,6 +35,7 @@ const (
 
 type MSdk interface {
 	UserMgr() MUserMgr
+	SetEndpoint(endpoint string) error
 	TestConnection() error
 	SetLogLevel(level int) error
 	Login(site string, permissions []string) (string, error)

@@ -88,7 +88,7 @@ func TestSdkNewForUesr(t *testing.T) {
 	}
 
 	misesid.DeleteKeyStoreFile()
-	appinfo := misesid.NewMisesAppInfoReadonly(
+	appinfo := types.NewMisesAppInfoReadonly(
 		"Mises Discover'",
 		"https://www.mises.site",
 		"https://home.mises.site",
@@ -110,7 +110,7 @@ func TestSdkVerifyLogin(t *testing.T) {
 		Debug:   true,
 	}
 
-	appinfo := misesid.NewMisesAppInfoReadonly(
+	appinfo := types.NewMisesAppInfoReadonly(
 		"Mises Discover'",
 		"https://www.mises.site",
 		"https://home.mises.site",
@@ -168,7 +168,7 @@ func TestSdkRegisterUser(t *testing.T) {
 		Debug:   true,
 	}
 
-	appinfo := misesid.NewMisesAppInfoReadonly(
+	appinfo := types.NewMisesAppInfoReadonly(
 		"Mises Discover'",
 		"https://www.mises.site",
 		"https://home.mises.site",

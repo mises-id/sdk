@@ -1,8 +1,6 @@
-package misesid
+package types
 
-import "github.com/mises-id/sdk/types"
-
-var _ types.MAppInfo = &MisesAppInfoReadonly{}
+var _ MAppInfo = &MisesAppInfoReadonly{}
 
 type MisesAppInfo struct {
 	Name        string   `json:"name,omitempty"`
@@ -32,7 +30,7 @@ func (user *MisesAppInfoReadonly) Developer() string {
 	return user.MisesAppInfo.Developer
 }
 
-func NewMisesAppInfo(info types.MAppInfo) *MisesAppInfo {
+func NewMisesAppInfo(info MAppInfo) *MisesAppInfo {
 	return &MisesAppInfo{
 		Name:        info.AppName(),
 		IconUrl:     info.IconURL(),
@@ -47,7 +45,7 @@ func NewMisesAppInfoReadonly(
 	iconUrl string,
 	homeUrl string,
 	domains []string,
-	developer string) types.MAppInfo {
+	developer string) MAppInfo {
 	info := MisesAppInfo{
 		Name:        name,
 		IconUrl:     iconUrl,
