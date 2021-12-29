@@ -40,6 +40,8 @@ type MisesApp struct {
 	clientCtx client.Context
 
 	pubKey string
+
+	pendingRegs chan Registration
 }
 
 type MisesAuth struct {
@@ -48,10 +50,15 @@ type MisesAuth struct {
 	Permissions         []string
 }
 
+type Registration struct {
+	MisesUID string
+	PubKey   string
+}
+
 const (
-	MisesDiscover              = "mises.site"
 	MisesDiscoverAppKey        = "mises-discover"
 	defaultExpirationInSeconds = 120
+	maxPendingRegs             = 100
 )
 
 func (app *MisesApp) AppDID() string {
@@ -74,7 +81,7 @@ func (app *MisesApp) AddAuth(misesId string, permissions []string) {
 	app.auths = append(app.auths, auth)
 }
 
-func (app *MisesApp) Init(chainID string, passPhrase string) error {
+func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string) error {
 	cmd.SetConfig()
 	clientCtx := client.Context{}
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
@@ -136,13 +143,7 @@ func (app *MisesApp) Init(chainID string, passPhrase string) error {
 	app.pubKey = hex.EncodeToString(key.GetPubKey().Bytes())
 
 	app.appDid = types.MisesAppIDPrefix + key.GetAddress().String()
-	app.info = misesid.NewMisesAppInfoReadonly(
-		"Mises Discover'",
-		"https://www.mises.site",
-		"https://home.mises.site",
-		[]string{MisesDiscover},
-		"Mises Network",
-	)
+	app.info = info
 
 	if err := misesid.StarSeqGenerator(app.clientCtx); err != nil {
 		return err
@@ -174,10 +175,25 @@ func (app *MisesApp) Init(chainID string, passPhrase string) error {
 		}
 	}
 
+	app.startRegisterRoutine()
+
 	return nil
 }
 
-func (app *MisesApp) RegisterUser(misesUID string, userPubKey string) error {
+func (app *MisesApp) startRegisterRoutine() {
+	app.pendingRegs = make(chan Registration, maxPendingRegs)
+	go func() {
+		for {
+
+			reg := <-app.pendingRegs
+
+			_ = app.RegisterUserSync(reg.MisesUID, reg.PubKey)
+
+		}
+	}()
+}
+
+func (app *MisesApp) RegisterUserSync(misesUID string, userPubKey string) error {
 	if _, err := misesid.GetMisesID(app, misesUID); err != nil {
 
 		tx, err := misesid.CreateDid(app.clientCtx, userPubKey, misesUID)
@@ -197,6 +213,15 @@ func (app *MisesApp) RegisterUser(misesUID string, userPubKey string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+
+}
+func (app *MisesApp) RegisterUserAsync(misesUID string, userPubKey string) error {
+	if len(app.pendingRegs) == maxPendingRegs {
+		return fmt.Errorf("too many pending registrations")
+	}
+	app.pendingRegs <- Registration{MisesUID: misesUID, PubKey: userPubKey}
+
 	return nil
 
 }

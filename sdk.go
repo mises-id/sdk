@@ -15,8 +15,9 @@ import (
 var _ types.MSdk = &misesSdk{}
 
 type MSdkOption struct {
-	ChainID string
-	Debug   bool
+	ChainID    string //'mises' for the mainnet
+	PassPhrase string //8 chars needed, default is 'mises.site'
+	Debug      bool
 }
 
 type misesSdk struct {
@@ -40,15 +41,18 @@ func NewSdkForUser(options MSdkOption, passPhrase string) types.MSdk {
 	return &ctx
 }
 
-func NewSdkForApp(options MSdkOption) (types.MSdk, types.MApp) {
+func NewSdkForApp(options MSdkOption, info types.MAppInfo) (types.MSdk, types.MApp) {
 	if options.ChainID == "" {
 		options.ChainID = types.DefaultChainID
+	}
+	if options.PassPhrase == "" {
+		options.PassPhrase = types.DefaultPassPhrase
 	}
 
 	var ctx misesSdk
 	ctx.options = options
 
-	mapp, err := ctx.EnsureApp()
+	mapp, err := ctx.EnsureApp(info)
 	if err != nil {
 		panic(err)
 	}
@@ -71,11 +75,10 @@ func MSdkInitUserMgr(passPhrase string) types.MUserMgr {
 	return &userMgr
 }
 
-func (sdk *misesSdk) EnsureApp() (types.MApp, error) {
+func (sdk *misesSdk) EnsureApp(info types.MAppInfo) (types.MApp, error) {
 
 	var app app.MisesApp
-	var passPhase = "mises.site"
-	if err := app.Init(sdk.options.ChainID, passPhase); err != nil {
+	if err := app.Init(info, sdk.options.ChainID, sdk.options.PassPhrase); err != nil {
 		return nil, err
 	}
 	return &app, nil

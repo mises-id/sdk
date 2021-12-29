@@ -28,7 +28,10 @@ func CreateRandomUser() types.MUser {
 
 func TestSdkNewForUesr(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
-	mo := sdk.MSdkOption{"test", true}
+	mo := sdk.MSdkOption{
+		ChainID: "test",
+		Debug:   true,
+	}
 
 	// test NewSdkForUser
 	s := sdk.NewSdkForUser(mo, "123456")
@@ -85,7 +88,14 @@ func TestSdkNewForUesr(t *testing.T) {
 	}
 
 	misesid.DeleteKeyStoreFile()
-	sApp, _ := sdk.NewSdkForApp(mo)
+	appinfo := misesid.NewMisesAppInfoReadonly(
+		"Mises Discover'",
+		"https://www.mises.site",
+		"https://home.mises.site",
+		[]string{"mises.site"},
+		"Mises Network",
+	)
+	sApp, _ := sdk.NewSdkForApp(mo, appinfo)
 
 	mid, _, err := sApp.VerifyLogin(auth)
 	assert.NoError(t, err)
@@ -95,9 +105,19 @@ func TestSdkNewForUesr(t *testing.T) {
 
 func TestSdkVerifyLogin(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
-	mo := sdk.MSdkOption{"test", true}
+	mo := sdk.MSdkOption{
+		ChainID: "test",
+		Debug:   true,
+	}
 
-	sApp, _ := sdk.NewSdkForApp(mo)
+	appinfo := misesid.NewMisesAppInfoReadonly(
+		"Mises Discover'",
+		"https://www.mises.site",
+		"https://home.mises.site",
+		[]string{"mises.site"},
+		"Mises Network",
+	)
+	sApp, _ := sdk.NewSdkForApp(mo, appinfo)
 	auth := "mises_id=did:mises:mises1y53kz80x5gm2w0ype8x7a3w6sstztxxg7qkl5n&nonce=0123456789&sig=304402201ada63a9dccc8ace5b3c96b00817311a36096c997e081b57f8b39b2392a51905022041e74283ec05333062a3a7180ba2775b5e203e596c3cefd8b92b775b519b7e06&pubkey=03e78b0e4bddddabd37bca173c9df270096ec55aa97bed2ba82d72c830d400c8e5"
 
 	mid, _, err := sApp.VerifyLogin(auth)
@@ -108,7 +128,10 @@ func TestSdkVerifyLogin(t *testing.T) {
 
 func TestSdkActiveUesr(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
-	mo := sdk.MSdkOption{"test", true}
+	mo := sdk.MSdkOption{
+		ChainID: "test",
+		Debug:   true,
+	}
 
 	// test NewSdkForUser
 	s := sdk.NewSdkForUser(mo, "123456")
@@ -127,7 +150,6 @@ func TestSdkActiveUesr(t *testing.T) {
 	u = ugr.ActiveUser()
 	assert.True(t, u.MisesID() == newUser.MisesID())
 
-	mo = sdk.MSdkOption{"test", true}
 	s = sdk.NewSdkForUser(mo, "123456")
 	ugr = s.UserMgr()
 	u = ugr.ActiveUser()
@@ -141,12 +163,22 @@ func TestSdkActiveUesr(t *testing.T) {
 }
 
 func TestSdkRegisterUser(t *testing.T) {
-	mo := sdk.MSdkOption{"test", true}
+	mo := sdk.MSdkOption{
+		ChainID: "test",
+		Debug:   true,
+	}
 
-	_, app := sdk.NewSdkForApp(mo)
+	appinfo := misesid.NewMisesAppInfoReadonly(
+		"Mises Discover'",
+		"https://www.mises.site",
+		"https://home.mises.site",
+		[]string{"mises.site"},
+		"Mises Network",
+	)
+	_, app := sdk.NewSdkForApp(mo, appinfo)
 
 	newUser := CreateRandomUser()
 
-	err := app.RegisterUser(newUser.MisesID(), newUser.Signer().PubKey())
+	err := app.RegisterUserAsync(newUser.MisesID(), newUser.Signer().PubKey())
 	assert.NoError(t, err)
 }

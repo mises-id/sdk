@@ -23,6 +23,7 @@ func init() {
 const (
 	DefaultEndpoint       string = "http://localhost:1317/"
 	DefaultChainID        string = "mises"
+	DefaultPassPhrase     string = "mises.site"
 	AddressPrefix         string = "mises"
 	MisesIDPrefix                = "did:mises:"
 	MisesAppIDPrefix             = "did:misesapp:"
@@ -81,11 +82,11 @@ type MApp interface {
 	MisesID() string //did:misesapp:0123456789abcdef
 	Info() MAppInfo
 
-	Init(chainID string, passPhrase string) error
+	Init(info MAppInfo, chainID string, passPhrase string) error
 
 	AddAuth(misesUID string, permissions []string)
 
-	RegisterUser(misesUID string, userPubKey string) error
+	RegisterUserAsync(misesUID string, userPubKey string) error
 
 	Signer() MSigner
 }
