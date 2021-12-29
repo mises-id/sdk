@@ -593,6 +593,8 @@ github.com/mises-id/cosmos-sdk v0.44.6-0.20211209094558-a7c9c77cfc17 h1:/bn4HGEz
 github.com/mises-id/cosmos-sdk v0.44.6-0.20211209094558-a7c9c77cfc17/go.mod h1:maUA6m2TBxOJZkbwl0eRtEBgTX37kcaiOWU5t1HEGaY=
 github.com/mises-id/iavl v0.17.4-0.20211207035003-f9d26e6150db h1:7if9aLADO/xbrqJj3xbl/eQYunF1UqhN91tTC16tRg0=
 github.com/mises-id/iavl v0.17.4-0.20211207035003-f9d26e6150db/go.mod h1:5ZbIMs6kY4+RfVjLjOJa6qcga2vsm4Orb/OUOmpdl6I=
+github.com/mises-id/mises-tm v0.0.0-20211229034748-9cc59047a831 h1:GsMR9yc3lY7/1Ee6i8E1m8YBTvlRRXdaXigHwg3KWFo=
+github.com/mises-id/mises-tm v0.0.0-20211229034748-9cc59047a831/go.mod h1:N7XxmfWQlphHhbsKyIPxUb542YHDQBVwVdryuHV5nWY=
 github.com/mises-id/tendermint v0.34.15-0.20211207033151-1f29b59c0edf h1:oWnyYnSgdT3F4aNmfHj0lC1ChJCCiMuTQmL65kfRGLI=
 github.com/mises-id/tendermint v0.34.15-0.20211207033151-1f29b59c0edf/go.mod h1:FrwVm3TvsVicI9Z7FlucHV6Znfd5KBc/Lpp69cCwtk0=
 github.com/mises-id/tm-db v0.6.5-0.20210822095222-e1ff1e0dc734 h1:3cqNcdA/GpkZu+5e9XoQJYILiqGUXWVJ4luVCECBB9c=

@@ -2,6 +2,7 @@ package main
 
 import (
 	cmd "github.com/mises-id/sdk/client/cli/commands"
+	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 	"github.com/tendermint/tendermint/libs/cli"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func main() {
-	cmd.SetConfig()
+	misesid.SetConfig()
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.LightCmd(),

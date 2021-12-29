@@ -27,7 +27,6 @@ import (
 	sdkrest "github.com/mises-id/sdk/client/rest"
 
 	misestypes "github.com/mises-id/mises-tm/x/misestm/types"
-	cmd "github.com/mises-id/sdk/client/cli/commands"
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 )
@@ -82,7 +81,7 @@ func (app *MisesApp) AddAuth(misesId string, permissions []string) {
 }
 
 func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string) error {
-	cmd.SetConfig()
+	misesid.SetConfig()
 	clientCtx := client.Context{}
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
 	std.RegisterInterfaces(interfaceRegistry)
