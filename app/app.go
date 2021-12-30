@@ -40,18 +40,13 @@ type MisesApp struct {
 
 	pubKey string
 
-	pendingRegs chan Registration
+	pendingRegs chan types.Registration
 }
 
 type MisesAuth struct {
 	Uid                 string
 	ExpirationInSeconds int
 	Permissions         []string
-}
-
-type Registration struct {
-	MisesUID string
-	PubKey   string
 }
 
 const (
@@ -180,13 +175,13 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 }
 
 func (app *MisesApp) startRegisterRoutine() {
-	app.pendingRegs = make(chan Registration, maxPendingRegs)
+	app.pendingRegs = make(chan types.Registration, maxPendingRegs)
 	go func() {
 		for {
 
 			reg := <-app.pendingRegs
 
-			err := app.RegisterUserSync(reg.MisesUID, reg.PubKey)
+			err := app.RegisterUserSync(reg)
 			if err != nil {
 				fmt.Printf("RegisterUser fail: %s\n", err.Error())
 			}
@@ -195,10 +190,10 @@ func (app *MisesApp) startRegisterRoutine() {
 	}()
 }
 
-func (app *MisesApp) RegisterUserSync(misesUID string, userPubKey string) error {
-	if _, err := misesid.GetMisesID(app, misesUID); err != nil {
+func (app *MisesApp) RegisterUserSync(reg types.Registration) error {
+	if _, err := misesid.GetMisesID(app, reg.MisesUID); err != nil {
 
-		tx, err := misesid.CreateDid(app.clientCtx, userPubKey, misesUID)
+		tx, err := misesid.CreateDid(app.clientCtx, reg.PubKey, reg.MisesUID)
 		if err != nil {
 			return err
 		}
@@ -207,7 +202,7 @@ func (app *MisesApp) RegisterUserSync(misesUID string, userPubKey string) error 
 			return err
 		}
 	}
-	tx, err := misesid.UpdateAppFeeGrant(app.clientCtx, app.MisesID(), misesUID)
+	tx, err := misesid.UpdateAppFeeGrant(app.clientCtx, app.MisesID(), reg.MisesUID, reg.FeeGrantedPerDay)
 	if err != nil {
 		return err
 	}
@@ -219,11 +214,11 @@ func (app *MisesApp) RegisterUserSync(misesUID string, userPubKey string) error 
 	return nil
 
 }
-func (app *MisesApp) RegisterUserAsync(misesUID string, userPubKey string) error {
+func (app *MisesApp) RegisterUserAsync(reg types.Registration) error {
 	if len(app.pendingRegs) == maxPendingRegs {
 		return fmt.Errorf("too many pending registrations")
 	}
-	app.pendingRegs <- Registration{MisesUID: misesUID, PubKey: userPubKey}
+	app.pendingRegs <- reg
 
 	return nil
 

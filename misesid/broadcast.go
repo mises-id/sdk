@@ -369,7 +369,7 @@ func UpdateAppInfo(clientCtx client.Context, misesAppID string, pubInfo types.Pu
 	return broadcastTx(clientCtx, txf, msg)
 }
 
-func UpdateAppFeeGrant(clientCtx client.Context, misesAppID string, misesUid string) (*sdk.TxResponse, error) {
+func UpdateAppFeeGrant(clientCtx client.Context, misesAppID string, misesUid string, amount int64) (*sdk.TxResponse, error) {
 
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
@@ -380,7 +380,7 @@ func UpdateAppFeeGrant(clientCtx client.Context, misesAppID string, misesUid str
 
 	periodLimit := []sdk.Coin{{
 		Denom:  "umis",
-		Amount: sdk.NewInt(10000),
+		Amount: sdk.NewInt(amount),
 	}}
 	period := time.Duration(24 * 3600 * 1000000000) //1day
 

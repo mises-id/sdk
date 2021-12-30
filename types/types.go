@@ -79,6 +79,12 @@ type MSigner interface {
 	AesKey() ([]byte, error)
 }
 
+type Registration struct {
+	MisesUID         string
+	PubKey           string
+	FeeGrantedPerDay int64
+}
+
 type MApp interface {
 	MisesID() string //did:misesapp:0123456789abcdef
 	Info() MAppInfo
@@ -87,9 +93,9 @@ type MApp interface {
 
 	AddAuth(misesUID string, permissions []string)
 
-	RegisterUserAsync(misesUID string, userPubKey string) error
+	RegisterUserAsync(reg Registration) error
 
-	RegisterUserSync(misesUID string, userPubKey string) error
+	RegisterUserSync(reg Registration) error
 
 	Signer() MSigner
 }

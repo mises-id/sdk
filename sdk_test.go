@@ -179,7 +179,7 @@ func TestSdkRegisterUser(t *testing.T) {
 
 	newUser := CreateRandomUser()
 
-	err := app.RegisterUserSync(newUser.MisesID(), newUser.Signer().PubKey())
+	err := app.RegisterUserSync(types.Registration{newUser.MisesID(), newUser.Signer().PubKey(), 100000})
 	assert.NoError(t, err)
 
 }
