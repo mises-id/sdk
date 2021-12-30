@@ -395,7 +395,10 @@ func UpdateAppFeeGrant(clientCtx client.Context, misesAppID string, misesUid str
 	var allowance feegrant.FeeAllowanceI
 	allowance = &periodic
 
-	allowedMsgs := []string{""}
+	allowedMsgs := []string{
+		"/misesid.misestm.v1beta1.MsgUpdateUserInfo",
+		"/misesid.misestm.v1beta1.MsgUpdateUserRelation",
+	}
 
 	allowance, err = feegrant.NewAllowedMsgAllowance(allowance, allowedMsgs)
 	if err != nil {

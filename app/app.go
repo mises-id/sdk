@@ -186,7 +186,10 @@ func (app *MisesApp) startRegisterRoutine() {
 
 			reg := <-app.pendingRegs
 
-			_ = app.RegisterUserSync(reg.MisesUID, reg.PubKey)
+			err := app.RegisterUserSync(reg.MisesUID, reg.PubKey)
+			if err != nil {
+				fmt.Printf("RegisterUser fail: %s\n", err.Error())
+			}
 
 		}
 	}()
@@ -208,6 +211,7 @@ func (app *MisesApp) RegisterUserSync(misesUID string, userPubKey string) error 
 	if err != nil {
 		return err
 	}
+	fmt.Printf("UpdateAppFeeGrant tx: %s\n", tx)
 	err = misesid.PollTxSync(app.clientCtx, tx)
 	if err != nil {
 		return err

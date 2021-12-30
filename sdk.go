@@ -119,6 +119,7 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 	v.Add("mises_id", auser.MisesID())
 	v.Add("nonce", nonce)
 	v.Add("sig", signed)
+	v.Add("pubkey", auser.Signer().PubKey())
 
 	return v.Encode(), nil
 }

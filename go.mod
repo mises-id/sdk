@@ -4,13 +4,12 @@ go 1.16
 
 require (
 	github.com/btcsuite/btcd v0.22.0-beta
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cosmos/btcutil v1.0.4
 	github.com/cosmos/cosmos-sdk v0.44.5
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/gorilla/mux v1.8.0
 	github.com/mises-id/mises-tm v0.0.0-20211229034748-9cc59047a831
-	github.com/multiformats/go-multibase v0.0.3 // indirect
+	github.com/multiformats/go-multibase v0.0.3
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0
 	github.com/tendermint/tendermint v0.34.14

@@ -89,6 +89,8 @@ type MApp interface {
 
 	RegisterUserAsync(misesUID string, userPubKey string) error
 
+	RegisterUserSync(misesUID string, userPubKey string) error
+
 	Signer() MSigner
 }
 
