@@ -52,15 +52,3 @@ type MSdk interface {
 	CheckMnemonics(mne string) error
 	PollSessionResult() MSessionResult
 }
-
-type MLightNode interface {
-	GetActiveMisesID() string
-	ForwardURL(comment string, title string, link string, iconUrl string) error
-
-	SetChainID(chainId string) error
-	SetEndpoints(primary string, witnesses string) error
-	SetTrust(height string, hash string) error
-	ServeRestApi(listen string) error
-	Serve(listen string) error
-	SetLogLevel(level int) error
-}

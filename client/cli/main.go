@@ -5,8 +5,6 @@ import (
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 	"github.com/tendermint/tendermint/libs/cli"
-
-	"github.com/cosmos/cosmos-sdk/client/keys"
 )
 
 func main() {
@@ -14,8 +12,6 @@ func main() {
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.LightCmd(),
-		cmd.RestCmd(),
-		keys.Commands(types.DefaultNodeHome),
 		cli.NewCompletionCmd(rootCmd, true),
 	)
 
