@@ -24,8 +24,6 @@ import (
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
-	sdkrest "github.com/mises-id/sdk/client/rest"
-
 	misestypes "github.com/mises-id/mises-tm/x/misestm/types"
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
@@ -47,6 +45,15 @@ type MisesAuth struct {
 	Uid                 string
 	ExpirationInSeconds int
 	Permissions         []string
+}
+type PassReader struct {
+	Pass string
+}
+
+func (r *PassReader) Read(p []byte) (n int, err error) {
+	n = copy(p, []byte(r.Pass))
+	n += copy(p[n:], []byte("\n"))
+	return
 }
 
 const (
@@ -92,7 +99,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		WithCodec(codec).
 		WithInterfaceRegistry(interfaceRegistry).
 		WithTxConfig(txCfg).
-		WithInput(&sdkrest.PassReader{Pass: passPhrase}).
+		WithInput(&PassReader{Pass: passPhrase}).
 		WithKeyringDir(types.NodeHome + "/sdk-keyring").
 		WithChainID(chainID)
 	kr, err := client.NewKeyringFromBackend(clientCtx, keyring.BackendFile)
