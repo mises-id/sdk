@@ -89,14 +89,8 @@ func (sdk *misesSdk) SetEndpoint(endpoint string) error {
 }
 
 func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
-	var valid bool = false
-	for _, domain := range sdk.app.Info().Domains() {
-		if site == domain {
-			valid = true
-			break
-		}
-	}
-	if !valid {
+
+	if site != "mises.site" {
 		return "", fmt.Errorf("only mises discover supported")
 	}
 	auser := sdk.userMgr.ActiveUser()
@@ -104,14 +98,12 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 		return "", fmt.Errorf("no active user")
 	}
 
-	sdk.app.AddAuth(auser.MisesID(), permission)
-
 	// sign user's misesid, publicKey using his privateKey, return the signed result
 	nonce := strconv.FormatInt(time.Now().UTC().Unix(), 10)
-	sigData := url.Values{}
-	sigData.Add("mises_id", auser.MisesID())
-	sigData.Add("nonce", nonce)
-	signed, err := auser.Signer().Sign(sigData.Encode())
+	sigData := ""
+	sigData += "mises_id=" + auser.MisesID()
+	sigData += "&nonce=" + nonce
+	signed, err := auser.Signer().Sign(sigData)
 	if err != nil {
 		return "", err
 	}
