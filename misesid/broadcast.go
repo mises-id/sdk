@@ -356,7 +356,7 @@ func UpdateAppInfo(clientCtx client.Context, misesAppID string, pubInfo types.Pu
 		pubInfo.Developer,
 		pubInfo.HomeUrl,
 		pubInfo.IconUrl,
-		0,
+		1,
 	)
 	if err := msg.ValidateBasic(); err != nil {
 		if err != nil {
