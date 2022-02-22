@@ -150,7 +150,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		return err
 	}
 
-	if _, err := misesid.GetMisesID(app, app.MisesID()); err != nil {
+	if err := misesid.CheckDid(app.clientCtx, app.MisesID()); err != nil {
 
 		tx, err := misesid.CreateDid(app.clientCtx, app.pubKey, app.MisesID())
 		if err != nil {

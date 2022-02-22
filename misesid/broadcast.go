@@ -133,6 +133,7 @@ func prepareFactory(clientCtx client.Context, txf tx.Factory) tx.Factory {
 		WithAccountRetriever(clientCtx.AccountRetriever).
 		WithKeybase(clientCtx.Keyring).
 		WithChainID(clientCtx.ChainID).
+		WithGasPrices("0.0001umis").
 		WithGas(gasSetting.Gas).
 		WithSimulateAndExecute(gasSetting.Simulate).
 		WithTimeoutHeight(0).
@@ -222,6 +223,31 @@ func prepareSigner(clientCtx client.Context) (client.Context, error) {
 	return clientCtx, nil
 }
 
+func CheckDid(clientCtx client.Context, misesID string) error {
+
+	node, err := clientCtx.GetNode()
+	if err != nil {
+		return err
+	}
+
+	query := types.RestQueryDidRequest{
+		MisesId: misesID,
+	}
+	queryBytes, err := query.Marshal()
+	if err != nil {
+		return err
+	}
+	res, err := node.ABCIQuery(context.Background(), "/misesid.misestm.v1beta1.RestQuery/QueryDid", queryBytes)
+	if err != nil {
+		return err
+	}
+
+	if res.Response.Code != 0 {
+		return fmt.Errorf("query did fail [" + misesID + "] ")
+	}
+
+	return nil
+}
 func CreateDid(clientCtx client.Context, pubKeyHex string, misesID string) (*sdk.TxResponse, error) {
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
