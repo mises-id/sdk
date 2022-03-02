@@ -79,10 +79,16 @@ type MSigner interface {
 	AesKey() ([]byte, error)
 }
 
-type Registration struct {
-	MisesUID         string
-	PubKey           string
-	FeeGrantedPerDay int64
+type MisesAppCmd interface {
+	MisesUID() string
+	PubKey() string
+	TxID() string
+}
+
+type MisesAppCmdListener interface {
+	OnTxGenerated(cmd MisesAppCmd)
+	OnSucceed(cmd MisesAppCmd)
+	OnFailed(cmd MisesAppCmd)
 }
 
 type MApp interface {
@@ -91,13 +97,18 @@ type MApp interface {
 
 	Init(info MAppInfo, chainID string, passPhrase string) error
 
+	SetListener(listener MisesAppCmdListener)
+
 	AddAuth(misesUID string, permissions []string)
 
-	RegisterUserAsync(reg Registration) error
+	RunAsync(cmd MisesAppCmd) error
 
-	RegisterUserSync(reg Registration) error
+	RunSync(cmd MisesAppCmd) error
 
 	Signer() MSigner
+
+	NewRegisterUserCmd(uid string, pubkey string, feeGrantedPerDay int64) MisesAppCmd
+	NewFaucetCmd(uid string, pubkey string, coin int64) MisesAppCmd
 }
 
 type MAppInfo interface {

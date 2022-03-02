@@ -15,6 +15,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
+	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/feegrant"
 	"github.com/mises-id/mises-tm/x/misestm/types"
 	multibase "github.com/multiformats/go-multibase"
@@ -445,6 +446,41 @@ func UpdateAppFeeGrant(clientCtx client.Context, misesAppID string, misesUid str
 	if err != nil {
 		return nil, err
 	}
+
+	if err := msg.ValidateBasic(); err != nil {
+		if err != nil {
+			return nil, err
+		}
+
+	}
+	txf := tx.Factory{}
+	txf = prepareFactory(clientCtx, txf)
+
+	return broadcastTx(clientCtx, txf, msg)
+}
+
+func Transfer(clientCtx client.Context, misesAppID string, misesUid string, umis int64) (*sdk.TxResponse, error) {
+
+	clientCtx, err := prepareSigner(clientCtx)
+	if err != nil {
+		return nil, err
+	}
+	amount := []sdk.Coin{{
+		Denom:  "umis",
+		Amount: sdk.NewInt(umis),
+	}}
+
+	appAddr, _, err := types.AddrFromDid(misesAppID)
+	if err != nil {
+		return nil, err
+	}
+
+	userAddr, _, err := types.AddrFromDid(misesUid)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := bank.NewMsgSend(appAddr, userAddr, amount)
 
 	if err := msg.ValidateBasic(); err != nil {
 		if err != nil {

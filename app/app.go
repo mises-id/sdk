@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -17,6 +18,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/std"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -38,7 +40,48 @@ type MisesApp struct {
 
 	pubKey string
 
-	pendingRegs chan types.Registration
+	pendingCmds chan types.MisesAppCmd
+
+	listener types.MisesAppCmdListener
+}
+
+type MisesAppCmdBase struct {
+	misesUID string
+	pubKey   string
+	txid     string
+}
+
+func (cmd *MisesAppCmdBase) MisesUID() string {
+	return cmd.misesUID
+}
+func (cmd *MisesAppCmdBase) PubKey() string {
+	return cmd.pubKey
+}
+
+func (cmd *MisesAppCmdBase) TxID() string {
+	return cmd.txid
+}
+
+func (cmd *MisesAppCmdBase) SetTxID(txid string) {
+	cmd.txid = txid
+}
+
+type RegisterUserCmd struct {
+	MisesAppCmdBase
+	feeGrantedPerDay int64
+}
+
+func (cmd *RegisterUserCmd) FeeGrantedPerDay() int64 {
+	return cmd.feeGrantedPerDay
+}
+
+type FaucetCmd struct {
+	MisesAppCmdBase
+	coinUMIS int64
+}
+
+func (cmd *FaucetCmd) CoinUMIS() int64 {
+	return cmd.coinUMIS
 }
 
 type MisesAuth struct {
@@ -57,9 +100,8 @@ func (r *PassReader) Read(p []byte) (n int, err error) {
 }
 
 const (
-	MisesDiscoverAppKey        = "mises-discover"
 	defaultExpirationInSeconds = 120
-	maxPendingRegs             = 100
+	maxPendingCmds             = 100
 )
 
 func (app *MisesApp) AppDID() string {
@@ -71,6 +113,12 @@ func (app *MisesApp) MisesID() string {
 
 func (app *MisesApp) Info() types.MAppInfo {
 	return app.info
+}
+
+func (app *MisesApp) AppKey(name string) string {
+	key := strings.ToLower(name)
+	key = strings.ReplaceAll(key, " ", "-")
+	return key
 }
 
 func (app *MisesApp) AddAuth(misesId string, permissions []string) {
@@ -107,14 +155,15 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		return err
 	}
 
-	key, err := kr.Key(MisesDiscoverAppKey)
+	appKey := app.AppKey(info.AppName())
+	key, err := kr.Key(appKey)
 	if err != nil {
 		mnemonics, err := misesid.RandomMnemonics()
 		if err != nil {
 			return err
 		}
 		fmt.Printf("app mnemonics is: %s\n", mnemonics)
-		key, err = kr.NewAccount(MisesDiscoverAppKey, mnemonics, passPhrase, "", hd.Secp256k1)
+		key, err = kr.NewAccount(appKey, mnemonics, passPhrase, "", hd.Secp256k1)
 		if err != nil {
 			return err
 		}
@@ -176,31 +225,39 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		}
 	}
 
-	app.startRegisterRoutine()
+	app.startCmdRoutine()
 
 	return nil
 }
 
-func (app *MisesApp) startRegisterRoutine() {
-	app.pendingRegs = make(chan types.Registration, maxPendingRegs)
+func (app *MisesApp) startCmdRoutine() {
+	app.pendingCmds = make(chan types.MisesAppCmd, maxPendingCmds)
 	go func() {
 		for {
 
-			reg := <-app.pendingRegs
+			cmd := <-app.pendingCmds
 
-			err := app.RegisterUserSync(reg)
+			err := app.RunSync(cmd)
 			if err != nil {
 				fmt.Printf("RegisterUser fail: %s\n", err.Error())
+				if app.listener != nil {
+					app.listener.OnFailed(cmd)
+				}
+			} else {
+				if app.listener != nil {
+					app.listener.OnSucceed(cmd)
+				}
 			}
 
 		}
 	}()
 }
 
-func (app *MisesApp) RegisterUserSync(reg types.Registration) error {
-	if _, err := misesid.GetMisesID(app, reg.MisesUID); err != nil {
+func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
+	//ensure did
+	if _, err := misesid.GetMisesID(app, cmd.MisesUID()); err != nil {
 
-		tx, err := misesid.CreateDid(app.clientCtx, reg.PubKey, reg.MisesUID)
+		tx, err := misesid.CreateDid(app.clientCtx, cmd.PubKey(), cmd.MisesUID())
 		if err != nil {
 			return err
 		}
@@ -209,23 +266,35 @@ func (app *MisesApp) RegisterUserSync(reg types.Registration) error {
 			return err
 		}
 	}
-	tx, err := misesid.UpdateAppFeeGrant(app.clientCtx, app.MisesID(), reg.MisesUID, reg.FeeGrantedPerDay)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("UpdateAppFeeGrant tx: %s\n", tx)
-	err = misesid.PollTxSync(app.clientCtx, tx)
-	if err != nil {
-		return err
-	}
-	return nil
 
-}
-func (app *MisesApp) RegisterUserAsync(reg types.Registration) error {
-	if len(app.pendingRegs) == maxPendingRegs {
-		return fmt.Errorf("too many pending registrations")
+	var tx *sdk.TxResponse = nil
+	var err error
+	if cmdapp, ok := cmd.(*RegisterUserCmd); ok {
+		tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
+	} else if cmdapp, ok := cmd.(*FaucetCmd); ok {
+		tx, err = misesid.Transfer(app.clientCtx, app.MisesID(), cmdapp.MisesUID(), cmdapp.CoinUMIS())
+	} else {
+		return fmt.Errorf("known cmd")
 	}
-	app.pendingRegs <- reg
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("generated tx: %s\n", tx)
+	if app.listener != nil {
+		if cmdbase, ok := cmd.(*MisesAppCmdBase); ok {
+			cmdbase.SetTxID(tx.TxHash)
+			app.listener.OnTxGenerated(cmd)
+		}
+	}
+	return misesid.PollTxSync(app.clientCtx, tx)
+}
+
+func (app *MisesApp) RunAsync(cmd types.MisesAppCmd) error {
+	if len(app.pendingCmds) == maxPendingCmds {
+		return fmt.Errorf("too many pending commands")
+	}
+	app.pendingCmds <- cmd
 
 	return nil
 
@@ -241,8 +310,9 @@ func (app *MisesApp) Sign(msg string) (string, error) {
 	if kr == nil {
 		return "", fmt.Errorf("no keyring")
 	}
+	appKey := app.AppKey(app.info.AppName())
 
-	sigBytes, _, err := kr.Sign(MisesDiscoverAppKey, []byte(msg))
+	sigBytes, _, err := kr.Sign(appKey, []byte(msg))
 	if err != nil {
 		return "", err
 	}
@@ -256,7 +326,8 @@ func (app *MisesApp) AesKey() ([]byte, error) {
 	if kr == nil {
 		return nil, fmt.Errorf("no keyring")
 	}
-	privKey, err := keyring.NewUnsafe(kr).UnsafeExportPrivKeyHex(MisesDiscoverAppKey)
+	appKey := app.AppKey(app.info.AppName())
+	privKey, err := keyring.NewUnsafe(kr).UnsafeExportPrivKeyHex(appKey)
 	if err != nil {
 		return nil, err
 	}
@@ -270,4 +341,19 @@ func (app *MisesApp) AesKey() ([]byte, error) {
 
 func (app *MisesApp) Signer() types.MSigner {
 	return app
+}
+
+func (app *MisesApp) NewRegisterUserCmd(uid string, pubkey string, feeGrantedPerDay int64) types.MisesAppCmd {
+	return &RegisterUserCmd{
+		MisesAppCmdBase{uid, pubkey, ""}, feeGrantedPerDay,
+	}
+}
+func (app *MisesApp) NewFaucetCmd(uid string, pubkey string, coinUMIS int64) types.MisesAppCmd {
+	return &FaucetCmd{
+		MisesAppCmdBase{uid, pubkey, ""}, coinUMIS,
+	}
+}
+
+func (app *MisesApp) SetListener(listener types.MisesAppCmdListener) {
+	app.listener = listener
 }

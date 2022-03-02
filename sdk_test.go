@@ -2,7 +2,6 @@ package sdk_test
 
 import (
 	"fmt"
-	"net/url"
 	"testing"
 
 	"github.com/mises-id/sdk"
@@ -73,23 +72,23 @@ func TestSdkNewForUesr(t *testing.T) {
 
 	fmt.Printf("auth string is: %s\n", auth)
 
-	v, err := url.ParseQuery(auth)
-	assert.NoError(t, err)
-	misesID := v.Get("mises_id")
-	sigStr := v.Get("sig")
-	nonce := v.Get("nonce")
+	// v, err := url.ParseQuery(auth)
+	// assert.NoError(t, err)
+	// misesID := v.Get("mises_id")
+	// sigStr := v.Get("sig")
+	// nonce := v.Get("nonce")
 
-	err = misesid.Verify(misesID+"&"+nonce, u.Signer().PubKey(), sigStr)
-	assert.NoError(t, err)
-	if err == nil {
-		fmt.Printf("signature is verified\n")
-	} else {
-		fmt.Printf("Signature verification is failed\n")
-	}
+	// err = misesid.Verify(misesID+"&"+nonce, u.Signer().PubKey(), sigStr)
+	// assert.NoError(t, err)
+	// if err == nil {
+	// 	fmt.Printf("signature is verified\n")
+	// } else {
+	// 	fmt.Printf("Signature verification is failed\n")
+	// }
 
 	misesid.DeleteKeyStoreFile()
 	appinfo := types.NewMisesAppInfoReadonly(
-		"Mises Discover'",
+		"Mises Discover",
 		"https://www.mises.site",
 		"https://home.mises.site",
 		[]string{"mises.site"},
@@ -111,7 +110,7 @@ func TestSdkVerifyLogin(t *testing.T) {
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(
-		"Mises Discover'",
+		"Mises Discover",
 		"https://www.mises.site",
 		"https://home.mises.site",
 		[]string{"mises.site"},
@@ -179,7 +178,7 @@ func TestSdkRegisterUser(t *testing.T) {
 
 	newUser := CreateRandomUser()
 
-	err := app.RegisterUserSync(types.Registration{newUser.MisesID(), newUser.Signer().PubKey(), 100000})
+	err := app.RunSync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000))
 	assert.NoError(t, err)
 
 }
