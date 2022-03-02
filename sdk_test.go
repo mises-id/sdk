@@ -168,7 +168,7 @@ func TestSdkRegisterUser(t *testing.T) {
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(
-		"Mises Discover'",
+		"Mises Discover",
 		"https://www.mises.site",
 		"https://home.mises.site",
 		[]string{"mises.site"},
@@ -179,6 +179,43 @@ func TestSdkRegisterUser(t *testing.T) {
 	newUser := CreateRandomUser()
 
 	err := app.RunSync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000))
+	assert.NoError(t, err)
+
+}
+
+type FaucetCallback struct {
+}
+
+func (cb *FaucetCallback) OnTxGenerated(cmd types.MisesAppCmd) {
+	fmt.Printf("OnTxGenerated\n")
+}
+func (cb *FaucetCallback) OnSucceed(cmd types.MisesAppCmd) {
+	fmt.Printf("OnSucceed\n")
+}
+func (cb *FaucetCallback) OnFailed(cmd types.MisesAppCmd) {
+	fmt.Printf("OnFailed\n")
+}
+
+func TestSdkFaucet(t *testing.T) {
+	mo := sdk.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: "mises.site",
+	}
+
+	appinfo := types.NewMisesAppInfoReadonly(
+		"Mises Faucet",
+		"https://www.mises.site",
+		"https://home.mises.site",
+		[]string{"mises.site"},
+		"Mises Network",
+	)
+	_, app := sdk.NewSdkForApp(mo, appinfo)
+
+	app.SetListener(&FaucetCallback{})
+	newUser := CreateRandomUser()
+
+	err := app.RunSync(app.NewFaucetCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100))
 	assert.NoError(t, err)
 
 }

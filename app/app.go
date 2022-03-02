@@ -167,6 +167,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		if err != nil {
 			return err
 		}
+		fmt.Printf("app address is: %s\n", key.GetAddress().String())
 
 	}
 
@@ -282,10 +283,8 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 
 	fmt.Printf("generated tx: %s\n", tx)
 	if app.listener != nil {
-		if cmdbase, ok := cmd.(*MisesAppCmdBase); ok {
-			cmdbase.SetTxID(tx.TxHash)
-			app.listener.OnTxGenerated(cmd)
-		}
+		cmd.SetTxID(tx.TxHash)
+		app.listener.OnTxGenerated(cmd)
 	}
 	return misesid.PollTxSync(app.clientCtx, tx)
 }

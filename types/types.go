@@ -83,6 +83,7 @@ type MisesAppCmd interface {
 	MisesUID() string
 	PubKey() string
 	TxID() string
+	SetTxID(txid string)
 }
 
 type MisesAppCmdListener interface {
