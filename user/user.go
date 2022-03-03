@@ -66,7 +66,7 @@ func (user *MisesUser) LoadKeyStore(passPhrase string) error {
 
 	privateKey, publicKey := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
 
-	pubKeyByte := publicKey.SerializeUncompressed()
+	pubKeyByte := publicKey.SerializeCompressed()
 
 	if ks.PubKey != hex.EncodeToString(pubKeyByte) {
 		return fmt.Errorf(misesid.ErrorMsgWrongPassword)
