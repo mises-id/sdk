@@ -5,14 +5,13 @@ go 1.16
 require (
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/cosmos/btcutil v1.0.4
-	github.com/cosmos/cosmos-sdk v0.44.5
+	github.com/cosmos/cosmos-sdk v0.44.6
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
-	github.com/gorilla/mux v1.8.0
-	github.com/mises-id/mises-tm v0.0.0-20211229034748-9cc59047a831
+	github.com/mises-id/mises-tm v0.0.0-20220303064252-ef3c1ed6ee27
 	github.com/multiformats/go-multibase v0.0.3
-	github.com/spf13/cobra v1.2.1
-	github.com/spf13/viper v1.9.0
-	github.com/tendermint/tendermint v0.34.14
+	github.com/spf13/cobra v1.3.0
+	github.com/spf13/viper v1.10.1
+	github.com/tendermint/tendermint v0.34.16
 	github.com/tendermint/tm-db v0.6.6
 	github.com/tyler-smith/assert v1.0.1
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
@@ -27,6 +26,6 @@ replace github.com/tendermint/tm-db => github.com/mises-id/tm-db v0.6.5-0.202108
 
 replace github.com/cosmos/iavl => github.com/mises-id/iavl v0.17.4-0.20211207035003-f9d26e6150db
 
-replace github.com/tendermint/tendermint => github.com/mises-id/tendermint v0.34.15-0.20211207033151-1f29b59c0edf
+replace github.com/cosmos/cosmos-sdk => github.com/mises-id/cosmos-sdk v0.44.6-0.20220303045135-50c576364ddb
 
-replace github.com/cosmos/cosmos-sdk => github.com/mises-id/cosmos-sdk v0.44.6-0.20211209094558-a7c9c77cfc17
+replace github.com/tendermint/tendermint => github.com/mises-id/tendermint v0.34.15-0.20220303055734-a5c89353c3e2

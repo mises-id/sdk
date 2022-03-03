@@ -257,6 +257,9 @@ func (app *MisesApp) startCmdRoutine() {
 func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 	//ensure did
 	if _, err := misesid.GetMisesID(app, cmd.MisesUID()); err != nil {
+		if cmd.PubKey() == "" {
+			return fmt.Errorf("no pubkey")
+		}
 
 		tx, err := misesid.CreateDid(app.clientCtx, cmd.PubKey(), cmd.MisesUID())
 		if err != nil {
