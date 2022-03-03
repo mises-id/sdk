@@ -16,8 +16,13 @@ import (
 	"os"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/mises-id/sdk/bip39"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/sha3"
+)
+
+const (
+	ErrorMsgWrongPassword = "wrong password"
 )
 
 type KdfParams struct {
@@ -189,4 +194,18 @@ func GenMac(ck []byte, ciphertext []byte) ([]byte, error) {
 
 func Void() {
 
+}
+
+func RandomMnemonics() (string, error) {
+	entropy, err := bip39.NewEntropy(128)
+	if err != nil {
+		return "", err
+	}
+
+	mnemonics, err := bip39.NewMnemonic(entropy)
+	if err != nil {
+		return "", err
+	}
+
+	return mnemonics, nil
 }

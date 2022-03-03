@@ -30,7 +30,7 @@ func TestNewMisesId(t *testing.T) {
 
 	privKey, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), privKeyByte)
 	Mid.privKey = privKey.Serialize()
-	pubKeyByte := pubKey.SerializeUncompressed()
+	pubKeyByte := pubKey.SerializeCompressed()
 	fmt.Printf("private key is: %x, len is: %d\n", big.NewInt(0).SetBytes(Mid.privKey), len(Mid.privKey))
 	fmt.Printf("uncompressed public key is: %x, len is: %d\n", big.NewInt(0).SetBytes(pubKeyByte), len(pubKeyByte))
 

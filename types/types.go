@@ -1,12 +1,32 @@
 package types
 
-import "github.com/btcsuite/btcd/btcec"
+import (
+	"os"
+	"path/filepath"
+)
+
+var (
+	NodeHome        string
+	DefaultNodeHome string
+)
+
+func init() {
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+
+	DefaultNodeHome = filepath.Join(userHomeDir, ".misestm")
+	NodeHome = DefaultNodeHome
+}
 
 const (
 	DefaultEndpoint       string = "http://localhost:1317/"
 	DefaultChainID        string = "mises"
+	DefaultPassPhrase     string = "mises.site"
 	AddressPrefix         string = "mises"
 	MisesIDPrefix                = "did:mises:"
+	MisesAppIDPrefix             = "did:misesapp:"
 	ErrorInvalidLeaseTime string = "Invalid lease time"
 	ErrorKeyIsRequired    string = "Key is required"
 	ErrorValueIsRequired  string = "Value is required"
@@ -15,28 +35,24 @@ const (
 
 type MSdk interface {
 	UserMgr() MUserMgr
+	SetEndpoint(endpoint string) error
 	TestConnection() error
 	SetLogLevel(level int) error
 	Login(site string, permissions []string) (string, error)
-	VerifyLogin(auth string) (string, error)
+	VerifyLogin(auth string) (string, string, error)
 }
 
 type MUserInfo interface {
 	Name() string
 	Gender() string
-	AvatarDid() string   //did of avatar file did:mises:0123456789abcdef/avatar
-	AvatarThumb() []byte //avatar thumb is a bitmap
-	HomePage() string    //url
+	Avatar() string   //url of avatar
+	HomePage() string //url of homepage
 	Emails() []string
 	Telphones() []string
 	Intro() string
 }
 type MUser interface {
 	MisesID() string
-	PubKEY() string
-	PrivKEY() string
-	PrivateKey() *btcec.PrivateKey
-	PublicKey() *btcec.PublicKey
 	Info() MUserInfo
 	GetFollow(appDid string) []string
 	LoadKeyStore(passPhrase string) error
@@ -44,7 +60,8 @@ type MUser interface {
 
 	SetInfo(info MUserInfo) (string, error)
 	SetFollow(followingId string, op bool, appDid string) (string, error)
-	Register(appDid string) (string, error)
+
+	Signer() MSigner
 }
 
 type MUserMgr interface {
@@ -53,6 +70,54 @@ type MUserMgr interface {
 	AddUser(user MUser)
 	SetActiveUser(userDid string) error
 	ActiveUser() MUser
+}
+
+type MSigner interface {
+	MisesID() string
+	Sign(msg string) (string, error)
+	PubKey() string
+	AesKey() ([]byte, error)
+}
+
+type MisesAppCmd interface {
+	MisesUID() string
+	PubKey() string
+	TxID() string
+	SetTxID(txid string)
+}
+
+type MisesAppCmdListener interface {
+	OnTxGenerated(cmd MisesAppCmd)
+	OnSucceed(cmd MisesAppCmd)
+	OnFailed(cmd MisesAppCmd)
+}
+
+type MApp interface {
+	MisesID() string //did:misesapp:0123456789abcdef
+	Info() MAppInfo
+
+	Init(info MAppInfo, chainID string, passPhrase string) error
+
+	SetListener(listener MisesAppCmdListener)
+
+	AddAuth(misesUID string, permissions []string)
+
+	RunAsync(cmd MisesAppCmd) error
+
+	RunSync(cmd MisesAppCmd) error
+
+	Signer() MSigner
+
+	NewRegisterUserCmd(uid string, pubkey string, feeGrantedPerDay int64) MisesAppCmd
+	NewFaucetCmd(uid string, pubkey string, coin int64) MisesAppCmd
+}
+
+type MAppInfo interface {
+	AppName() string //
+	IconURL() string
+	HomeURL() string
+	Domains() []string //app
+	Developer() string
 }
 
 /*

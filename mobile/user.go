@@ -1,8 +1,8 @@
 package mobile
 
 import (
+	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
-	"github.com/mises-id/sdk/user"
 )
 
 var _ MUserInfo = &mUserInfoWrapper{}
@@ -25,11 +25,8 @@ func (w *mUserInfoWrapper) Name() string {
 func (w *mUserInfoWrapper) Gender() string {
 	return w.info.Gender()
 }
-func (w *mUserInfoWrapper) AvatarDid() string {
-	return w.info.AvatarDid()
-}
-func (w *mUserInfoWrapper) AavatarThumb() []byte {
-	return w.info.AvatarThumb()
+func (w *mUserInfoWrapper) Avatar() string {
+	return w.info.Avatar()
 }
 func (w *mUserInfoWrapper) HomePage() string {
 	return w.info.HomePage()
@@ -47,21 +44,14 @@ func (w *mUserInfoWrapper) Intro() string {
 func (w *mUserWrapper) MisesID() string {
 	return w.MUser.MisesID()
 }
-func (w *mUserWrapper) PubKEY() string {
-	return w.MUser.PubKEY()
-}
-func (w *mUserWrapper) PrivKEY() string {
-	return w.MUser.PrivKEY()
-}
 func (w *mUserWrapper) Info() MUserInfo {
 	return &mUserInfoWrapper{info: w.MUser.Info()}
 }
 func (w *mUserWrapper) SetInfo(info MUserInfo) (string, error) {
-	minfo := user.NewMisesUserInfoReadonly(
+	minfo := misesid.NewMisesUserInfoReadonly(
 		info.Name(),
 		info.Gender(),
-		info.AvatarDid(),
-		info.AavatarThumb(),
+		info.Avatar(),
 		info.HomePage(),
 		mStringListToSlice(info.Emails()),
 		mStringListToSlice(info.Telphones()),
@@ -80,9 +70,6 @@ func (w *mUserWrapper) LoadKeyStore(passPhrase string) error {
 }
 func (w *mUserWrapper) IsRegistered() error {
 	return w.MUser.IsRegistered()
-}
-func (w *mUserWrapper) Register(appDid string) (string, error) {
-	return w.MUser.Register(appDid)
 }
 
 func (w *mUserMgrWrapper) CreateUser(mnemonic string, passPhrase string) (MUser, error) {
@@ -108,7 +95,10 @@ func (w *mUserMgrWrapper) SetActiveUser(userDid string, passPhrase string) error
 			if err != nil {
 				return err
 			}
-			w.MUserMgr.SetActiveUser(userDid)
+			err = w.MUserMgr.SetActiveUser(userDid)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -125,17 +115,15 @@ func (w *mUserMgrWrapper) ActiveUser() MUser {
 func NewMUserInfo(
 	name string,
 	gender string,
-	avatarDid string,
-	avatarThumb []byte,
+	avatar string,
 	homePage string,
 	emails MStringList,
 	telphones MStringList,
 	intro string) MUserInfo {
-	info := user.NewMisesUserInfoReadonly(
+	info := misesid.NewMisesUserInfoReadonly(
 		name,
 		gender,
-		avatarDid,
-		avatarThumb,
+		avatar,
 		homePage,
 		mStringListToSlice(emails),
 		mStringListToSlice(telphones),

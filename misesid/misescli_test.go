@@ -1,4 +1,4 @@
-package user_test
+package misesid_test
 
 import (
 	//"encoding/json"
@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/mises-id/sdk/bip39"
+	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 	"github.com/mises-id/sdk/user"
 	"github.com/tyler-smith/assert"
@@ -22,7 +23,7 @@ import (
 
 func init() {
 	/* load test data */
-	user.SetTestEndpoint("http://gw.mises.site:1317/")
+	misesid.SetTestEndpoint("http://gw.mises.site:1317/")
 }
 
 /*
@@ -155,14 +156,14 @@ func TestSetFollowing(t *testing.T) {
 */
 
 func PollSession(t *testing.T, session string) {
-	wr, err := user.PollSessionResult(60 * time.Second)
+	wr, err := misesid.PollSessionResult(60 * time.Second)
 	fmt.Printf("PollSessionResult finish\n")
 	assert.NoError(t, err)
 	assert.EqualString(t, "", wr.ErrMsg)
 	assert.EqualString(t, session, wr.Session)
 }
 func PrepareUser(t *testing.T, cuser types.MUser) {
-	sessionid, err := user.CreateUser(cuser)
+	sessionid, err := misesid.CreateMisesID(cuser.Signer())
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 	fmt.Printf("create misesid sessionid is %s\n", sessionid)
@@ -181,25 +182,24 @@ func TestUserSetInfo(t *testing.T) {
 
 	PrepareUser(t, cuser)
 
-	info := user.MisesUserInfo{
+	info := misesid.MisesUserInfo{
 		"yingming",
 		"male",
-		"007",
-		[]byte("123456789"),
+		"ipfs://asdasdasdadsa",
 		"http://mises.com",
 		[]string{"yingming@gmail.com", "51911267@qq.com"},
 		[]string{"17701314608", "18601350799", "18811790787"},
 		"",
 	}
 
-	sessionid, err := user.SetUInfo(cuser, &info)
+	sessionid, err := misesid.SetUInfo(cuser.Signer(), &info)
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 
 	fmt.Printf("userinfo sessionid is %s\n", sessionid)
 	PollSession(t, sessionid)
 
-	respInfo, err := user.GetUInfo(cuser, cuser.MisesID())
+	respInfo, err := misesid.GetUInfo(cuser.Signer(), cuser.MisesID())
 	assert.NoError(t, err)
 	assert.EqualString(t, "yingming", respInfo.Name)
 
@@ -214,25 +214,25 @@ func TestUserFollow(t *testing.T) {
 
 	PrepareUser(t, cuser2)
 
-	sessionid, err := user.SetFollowing(cuser1, cuser2.MisesID(), "follow")
+	sessionid, err := misesid.SetFollowing(cuser1.Signer(), cuser2.MisesID(), "follow")
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")
 
 	fmt.Printf("follow sessionid is %s\n", sessionid)
 	PollSession(t, sessionid)
 
-	followingIDs, err := user.GetFollowing(cuser1, cuser1.MisesID())
+	followingIDs, err := misesid.GetFollowing(cuser1.Signer(), cuser1.MisesID())
 	assert.NoError(t, err)
 	assert.True(t, followingIDs[0] == cuser2.MisesID())
 
-	sessionid1, err := user.SetFollowing(cuser1, cuser2.MisesID(), "unfollow")
+	sessionid1, err := misesid.SetFollowing(cuser1.Signer(), cuser2.MisesID(), "unfollow")
 	assert.NoError(t, err)
 	assert.False(t, sessionid1 == "")
 
 	fmt.Printf("unfollow sessionid is %s\n", sessionid1)
 	PollSession(t, sessionid1)
 
-	followingIDs1, err := user.GetFollowing(cuser1, cuser1.MisesID())
+	followingIDs1, err := misesid.GetFollowing(cuser1.Signer(), cuser1.MisesID())
 	assert.NoError(t, err)
 	assert.True(t, len(followingIDs1) == 0)
 
@@ -240,30 +240,30 @@ func TestUserFollow(t *testing.T) {
 
 func TestUserParseTxResp(t *testing.T) {
 
-	resp := user.MsgTxResp{}
+	resp := misesid.MsgTxResp{}
 	resp.Code = 0
 	resp.Error = ""
-	resp.TxResponse = user.MsgTx{Height: "1", Txhash: "123456"}
+	resp.TxResponse = misesid.MsgTx{Height: "1", Txhash: "123456"}
 	respBytes, err := json.Marshal(&resp)
 	fmt.Printf("resp is %s\n", string(respBytes))
 	assert.NoError(t, err)
-	msgTx, err := user.ParseTxResp(respBytes)
+	msgTx, err := misesid.ParseTxResp(respBytes)
 	assert.NoError(t, err)
 	assert.EqualString(t, "123456", msgTx.Txhash)
 }
 
 func dummyUpdate(t *testing.T, cuser types.MUser) {
 	//sessionid, _ := user.SetUInfo(cuser, &user.MisesUserInfo{})
-	encData := user.EncryptedData{
+	encData := misesid.EncryptedData{
 		EncData: "ipfRvOlodErWniY/E+hHUTSn7yiw2PzOvXceQk0RsutToZIxBW+w+yDSzEI9A/1qsmhh4PPcpVzzG6eKH8mkhfajBGi7CQvLTFNjqMVeJos=",
 		IV:      "gONDIeRF2LNrq7vVDC/YXw==",
 	}
-	msg := user.MsgUpdateUserInfo{
-		MsgReqBase:  user.MsgReqBase{cuser.MisesID()},
+	msg := misesid.MsgUpdateUserInfo{
+		MsgReqBase:  misesid.MsgReqBase{cuser.MisesID()},
 		PrivateInfo: encData,
 	}
-	v, _ := user.BuildPostForm(&msg, cuser)
-	user.Set2Mises(cuser, user.APIHost+user.UInfoURLPath, v)
+	v, _ := misesid.BuildPostForm(&msg, cuser.Signer())
+	misesid.Set2Mises(cuser.Signer(), misesid.APIHost+misesid.UInfoURLPath, v)
 	//PollSession(t, sessionid)
 }
 func TestGas(t *testing.T) {
@@ -280,16 +280,16 @@ func TestGas(t *testing.T) {
 	dummyUpdate(t, cuser)
 	dummyUpdate(t, cuser)
 	dummyUpdate(t, cuser)
-	encData := user.EncryptedData{
+	encData := misesid.EncryptedData{
 		EncData: "pZEHlixS294ZndSWdDLZlhBndKerU80MaTr66CVWcCbHYOg3Z9QIZqCn56Ltsko8NN57ypNfVe2ai6B+rQb1zmGFYuSlRH7YMpIEkKqduD32h5UkZAU7nxDZmBvcBmez1ZW710ZH27Rr4HB8c2CBVBoqprn7R9G7xOobHdBeKwv+vOGIhlTcG2w1X6MKTLxZvJEThx0mnys3bQ+NkPvaOw==",
 		IV:      "IRYl6vDWW32cDPQpbW3jYQ==",
 	}
-	msg := user.MsgUpdateUserInfo{
-		MsgReqBase:  user.MsgReqBase{cuser.MisesID()},
+	msg := misesid.MsgUpdateUserInfo{
+		MsgReqBase:  misesid.MsgReqBase{cuser.MisesID()},
 		PrivateInfo: encData,
 	}
-	v, err := user.BuildPostForm(&msg, cuser)
-	sessionid, err := user.Set2Mises(cuser, user.APIHost+user.UInfoURLPath, v)
+	v, err := misesid.BuildPostForm(&msg, cuser.Signer())
+	sessionid, err := misesid.Set2Mises(cuser.Signer(), misesid.APIHost+misesid.UInfoURLPath, v)
 
 	assert.NoError(t, err)
 	assert.False(t, sessionid == "")

@@ -3,9 +3,11 @@ package sdk
 import (
 	"fmt"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/mises-id/sdk/app"
-	"github.com/mises-id/sdk/bip39"
+	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 	"github.com/mises-id/sdk/user"
 )
@@ -13,14 +15,15 @@ import (
 var _ types.MSdk = &misesSdk{}
 
 type MSdkOption struct {
-	ChainID string
-	Debug   bool
+	ChainID    string //'mises' for the mainnet
+	PassPhrase string //8 chars needed, default is 'mises.site'
+	Debug      bool
 }
 
 type misesSdk struct {
 	options MSdkOption
 	userMgr types.MUserMgr
-	app     app.MApp
+	app     types.MApp
 }
 
 func (ctx *misesSdk) setupLogger() {
@@ -33,40 +36,34 @@ func NewSdkForUser(options MSdkOption, passPhrase string) types.MSdk {
 
 	var ctx misesSdk
 	ctx.options = options
-	ctx.userMgr, ctx.app = MSdkInit(passPhrase)
+	ctx.userMgr = MSdkInitUserMgr(passPhrase)
 
 	return &ctx
 }
 
-func NewSdkForApp(options MSdkOption) types.MSdk {
+func NewSdkForApp(options MSdkOption, info types.MAppInfo) (types.MSdk, types.MApp) {
 	if options.ChainID == "" {
 		options.ChainID = types.DefaultChainID
+	}
+	if options.PassPhrase == "" {
+		options.PassPhrase = types.DefaultPassPhrase
 	}
 
 	var ctx misesSdk
 	ctx.options = options
-	ctx.userMgr, ctx.app = MSdkInit("")
 
-	if ctx.userMgr.ActiveUser() == nil {
-		mnemonics, err := RandomMnemonics()
-		if err != nil {
-			panic(err)
-		}
-		admin, err := ctx.userMgr.CreateUser(mnemonics, "")
-		admin.Register("appID")
-		ctx.userMgr.SetActiveUser(admin.MisesID())
+	mapp, err := ctx.EnsureApp(info)
+	if err != nil {
+		panic(err)
 	}
-
-	return &ctx
+	ctx.app = mapp
+	return &ctx, mapp
 }
 
-func MSdkInit(passPhrase string) (types.MUserMgr, app.MApp) {
+func MSdkInitUserMgr(passPhrase string) types.MUserMgr {
 	var userMgr user.MisesUserMgr
-	var a app.MisesApp
+
 	var u user.MisesUser
-
-	a.SetAppDomain(app.MisesDiscover)
-
 	err := u.LoadKeyStore(passPhrase)
 	if u.MisesID() != "" {
 		userMgr.AddUser(&u)
@@ -75,25 +72,25 @@ func MSdkInit(passPhrase string) (types.MUserMgr, app.MApp) {
 		userMgr.SetActiveUser(u.MisesID())
 	}
 
-	return &userMgr, &a
+	return &userMgr
 }
 
-func RandomMnemonics() (string, error) {
-	entropy, err := bip39.NewEntropy(128)
-	if err != nil {
-		return "", err
-	}
+func (sdk *misesSdk) EnsureApp(info types.MAppInfo) (types.MApp, error) {
 
-	mnemonics, err := bip39.NewMnemonic(entropy)
-	if err != nil {
-		return "", err
+	var app app.MisesApp
+	if err := app.Init(info, sdk.options.ChainID, sdk.options.PassPhrase); err != nil {
+		return nil, err
 	}
+	return &app, nil
+}
 
-	return mnemonics, nil
+func (sdk *misesSdk) SetEndpoint(endpoint string) error {
+	return misesid.SetTestEndpoint(endpoint)
 }
 
 func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
-	if site != sdk.app.AppDomain() {
+
+	if site != "mises.site" {
 		return "", fmt.Errorf("only mises discover supported")
 	}
 	auser := sdk.userMgr.ActiveUser()
@@ -101,10 +98,12 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 		return "", fmt.Errorf("no active user")
 	}
 
-	sdk.app.AddAuth(auser.MisesID(), permission)
-
 	// sign user's misesid, publicKey using his privateKey, return the signed result
-	signed, nonce, err := user.Sign(auser, auser.MisesID())
+	nonce := strconv.FormatInt(time.Now().UTC().Unix(), 10)
+	sigData := ""
+	sigData += "mises_id=" + auser.MisesID()
+	sigData += "&nonce=" + nonce
+	signed, err := auser.Signer().Sign(sigData)
 	if err != nil {
 		return "", err
 	}
@@ -112,31 +111,29 @@ func (sdk *misesSdk) Login(site string, permission []string) (string, error) {
 	v.Add("mises_id", auser.MisesID())
 	v.Add("nonce", nonce)
 	v.Add("sig", signed)
+	v.Add("pubkey", auser.Signer().PubKey())
 
 	return v.Encode(), nil
 }
-func (sdk *misesSdk) VerifyLogin(auth string) (string, error) {
-	auser := sdk.userMgr.ActiveUser()
-	if auser == nil {
-		return "", fmt.Errorf("no active user")
-	}
+func (sdk *misesSdk) VerifyLogin(auth string) (string, string, error) {
+
 	v, err := url.ParseQuery(auth)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	misesID := v.Get("mises_id")
 	sigStr := v.Get("sig")
 	nonce := v.Get("nonce")
-	pubKeyStr, err := user.GetUser(auser, misesID)
-	if err == nil {
-		return "", err
+	pubKeyStr := v.Get("pubkey")
+
+	if err := misesid.CheckMisesID(misesID, pubKeyStr); err != nil {
+		return "", "", err
 	}
 
-	err = user.Verify(misesID+"&"+nonce, pubKeyStr, sigStr)
-	if err == nil {
-		return "", err
+	if err := misesid.Verify("mises_id="+misesID+"&nonce="+nonce, pubKeyStr, sigStr); err != nil {
+		return "", "", err
 	}
-	return misesID, nil
+	return misesID, pubKeyStr, nil
 }
 
 func (sdk *misesSdk) UserMgr() types.MUserMgr {

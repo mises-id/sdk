@@ -1,6 +1,7 @@
 package user
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 
@@ -11,18 +12,27 @@ import (
 
 var _ types.MUser = &MisesUser{}
 
-const (
-	ErrorMsgWrongPassword = "wrong password"
-)
-
 type MisesUser struct {
 	mid          string
 	privKey      string
 	pubKey       string
 	privateKey   *btcec.PrivateKey
 	publicKey    *btcec.PublicKey
-	uinfo        MisesUserInfo
+	uinfo        misesid.MisesUserInfo
 	isRegistered bool
+}
+
+func NewMisesUser(mid string, prikeyBytes []byte) *MisesUser {
+	privKey, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), prikeyBytes)
+	pubkeyBytes := pubKey.SerializeCompressed()
+	u := MisesUser{
+		mid:        types.MisesIDPrefix + mid,
+		privKey:    hex.EncodeToString(prikeyBytes),
+		pubKey:     hex.EncodeToString(pubkeyBytes),
+		privateKey: privKey,
+		publicKey:  pubKey,
+	}
+	return &u
 }
 
 // read keystore file, decode private key
@@ -37,29 +47,29 @@ func (user *MisesUser) LoadKeyStore(passPhrase string) error {
 
 	s, err := ks.Scrypt(passPhrase)
 	if err != nil {
-		return fmt.Errorf(ErrorMsgWrongPassword)
+		return fmt.Errorf(misesid.ErrorMsgWrongPassword)
 	}
 
 	ctext, err := hex.DecodeString(ks.Crypto.Ciphertext)
 	if err != nil {
-		return fmt.Errorf(ErrorMsgWrongPassword)
+		return fmt.Errorf(misesid.ErrorMsgWrongPassword)
 	}
 	iv, err := hex.DecodeString(ks.Crypto.CipherParams.Iv)
 	if err != nil {
-		return fmt.Errorf(ErrorMsgWrongPassword)
+		return fmt.Errorf(misesid.ErrorMsgWrongPassword)
 	}
 
 	privKey, err := misesid.AesDecrypt(ctext, s, iv)
 	if err != nil {
-		return fmt.Errorf(ErrorMsgWrongPassword)
+		return fmt.Errorf(misesid.ErrorMsgWrongPassword)
 	}
 
 	privateKey, publicKey := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
 
-	pubKeyByte := publicKey.SerializeUncompressed()
+	pubKeyByte := publicKey.SerializeCompressed()
 
 	if ks.PubKey != hex.EncodeToString(pubKeyByte) {
-		return fmt.Errorf(ErrorMsgWrongPassword)
+		return fmt.Errorf(misesid.ErrorMsgWrongPassword)
 	}
 
 	user.privateKey = privateKey
@@ -73,11 +83,11 @@ func (user MisesUser) MisesID() string {
 	return user.mid
 }
 
-func (user MisesUser) PubKEY() string {
+func (user MisesUser) PubKey() string {
 	return user.pubKey
 }
 
-func (user MisesUser) PrivKEY() string {
+func (user MisesUser) PrivKey() string {
 	return user.privKey
 }
 
@@ -90,19 +100,19 @@ func (user MisesUser) PublicKey() *btcec.PublicKey {
 }
 
 func (user *MisesUser) Info() types.MUserInfo {
-	uInfo, err := GetUInfo(user, user.MisesID())
+	uInfo, err := misesid.GetUInfo(user, user.MisesID())
 	if err != nil {
-		return &MisesUserInfoReadonly{user.uinfo}
+		return &misesid.MisesUserInfoReadonly{user.uinfo}
 	}
 
 	user.uinfo = *uInfo
-	return &MisesUserInfoReadonly{*uInfo}
+	return &misesid.MisesUserInfoReadonly{*uInfo}
 }
 
 func (user *MisesUser) SetInfo(info types.MUserInfo) (string, error) {
 
-	minfo := NewMisesUserInfo(info)
-	session, err := SetUInfo(user, minfo)
+	minfo := misesid.NewMisesUserInfo(info)
+	session, err := misesid.SetUInfo(user, minfo)
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +123,7 @@ func (user *MisesUser) SetInfo(info types.MUserInfo) (string, error) {
 
 func (user *MisesUser) GetFollow(appid string) []string {
 
-	f, err := GetFollowing(user, user.MisesID())
+	f, err := misesid.GetFollowing(user, user.MisesID())
 	if err != nil {
 		return []string{}
 	}
@@ -130,14 +140,14 @@ func (user *MisesUser) SetFollow(followingId string, op bool, appid string) (str
 		operator = "unfollow"
 	}
 
-	return SetFollowing(user, followingId, operator)
+	return misesid.SetFollowing(user, followingId, operator)
 }
 
 func (user *MisesUser) IsRegistered() error {
 	if user.isRegistered {
 		return nil
 	}
-	_, err := GetUser(user, user.MisesID())
+	_, err := misesid.GetMisesID(user, user.MisesID())
 	if err != nil {
 		return err
 	}
@@ -147,5 +157,42 @@ func (user *MisesUser) IsRegistered() error {
 }
 
 func (user *MisesUser) Register(appID string) (string, error) {
-	return CreateUser(user)
+	return misesid.CreateMisesID(user)
+}
+
+// sign msg using user's private key
+func (cuser *MisesUser) Sign(msg string) (string, error) {
+	privKey := cuser.PrivateKey()
+	if privKey == nil {
+		return "", fmt.Errorf("private key or public key not available")
+	}
+
+	mhash := sha256.Sum256([]byte(msg))
+
+	sig, err := privKey.Sign(mhash[:])
+	if err != nil {
+		return "", err
+	}
+
+	derString := sig.Serialize()
+
+	signed := hex.EncodeToString(derString)
+
+	return signed, nil
+}
+func (cuser *MisesUser) AesKey() ([]byte, error) {
+	privKey := cuser.PrivKey()
+	if privKey == "" {
+		return nil, fmt.Errorf("private key or public key not available")
+	}
+	privKeyBytes, err := hex.DecodeString(privKey)
+	if err != nil {
+		return nil, err
+	}
+	mhash := sha256.Sum256([]byte(privKeyBytes))
+	return mhash[:], nil
+}
+
+func (cuser *MisesUser) Signer() types.MSigner {
+	return cuser
 }

@@ -4,10 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/btcsuite/btcutil/bech32"
-
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/ebfe/keccak"
 	"github.com/mises-id/sdk/bip39"
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
@@ -22,8 +19,6 @@ type MisesUserMgr struct {
 
 // create user & his misesid, private key & uncompressed public key, write a keystore file
 func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (types.MUser, error) {
-	var u MisesUser
-
 	// in bip39, passPhrase will affect the wallet address,
 	// that's not what we need now, so we simply set the passwaor to empty
 	seed, err := bip39.NewSeed(mnemonic, "")
@@ -37,29 +32,21 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (typ
 
 	privKey, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), privKeyByte)
 	privateKey := privKey.Serialize()
-	pubKeyByte := pubKey.SerializeUncompressed()
+	pubKeyByte := pubKey.SerializeCompressed()
 
-	k := keccak.New256()
-	k.Write(pubKeyByte)
-	publicKey := k.Sum(nil)
-
-	mid, err := ConvertAndEncode(
+	mid, err := misesid.ConvertAndEncode(
 		types.AddressPrefix,
-		publicKey[len(publicKey)-20:],
+		misesid.PubKeyAddrBytes(pubKeyByte),
 	)
 	if err != nil {
 		return nil, err
 	}
-	u.mid = types.MisesIDPrefix + mid
-	u.privKey = hex.EncodeToString(privateKey)
-	u.pubKey = hex.EncodeToString(pubKeyByte)
-	u.privateKey = privKey
-	u.publicKey = pubKey
+	u := NewMisesUser(mid, privateKey)
 	// privateKey, publicKey & misesId generated, and new MisesUser Created
 
 	// add user to userMgr, set to Active User
-	userMgr.AddUser(&u)
-	userMgr.SetActiveUser(u.mid)
+	userMgr.AddUser(u)
+	_ = userMgr.SetActiveUser(u.MisesID())
 
 	// encrypt privatKey, and write keystore file
 	ks := &misesid.KeyStore{}
@@ -81,8 +68,8 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (typ
 	}
 
 	// write keystore file
-	ks.MId = u.mid
-	ks.PubKey = u.pubKey
+	ks.MId = u.MisesID()
+	ks.PubKey = u.PubKey()
 	ks.Version = misesid.Ver
 	ks.Crypto.Ciphertext = hex.EncodeToString(ciphertext)
 	ks.Crypto.Cipher = misesid.CipherMethod
@@ -94,16 +81,7 @@ func (userMgr *MisesUserMgr) CreateUser(mnemonic string, passPhrase string) (typ
 		return nil, err
 	}
 
-	return &u, nil
-}
-
-func ConvertAndEncode(hrp string, data []byte) (string, error) {
-	converted, err := bech32.ConvertBits(data, 8, 5, true)
-	if err != nil {
-		return "", fmt.Errorf("encoding bech32 failed: %w", err)
-	}
-
-	return bech32.Encode(hrp, converted)
+	return u, nil
 }
 
 func (userMgr *MisesUserMgr) ListUsers() []types.MUser {

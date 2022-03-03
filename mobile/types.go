@@ -12,9 +12,8 @@ type MUserList interface {
 type MUserInfo interface {
 	Name() string
 	Gender() string
-	AvatarDid() string    //did of avatar file did:mises:0123456789abcdef/avatar
-	AavatarThumb() []byte //avatar thumb is a bitmap
-	HomePage() string     //url
+	Avatar() string   //url
+	HomePage() string //url
 	Emails() MStringList
 	Telphones() MStringList
 	Intro() string
@@ -22,15 +21,12 @@ type MUserInfo interface {
 
 type MUser interface {
 	MisesID() string
-	PubKEY() string
-	PrivKEY() string
 	Info() MUserInfo
 	SetInfo(info MUserInfo) (string, error)
 	GetFollow(appDid string) MStringList
 	SetFollow(followingDid string, op bool, appDid string) (string, error)
 	LoadKeyStore(passPhrase string) error
 	IsRegistered() error
-	Register(appDid string) (string, error)
 }
 
 type MUserMgr interface {

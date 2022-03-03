@@ -1,4 +1,4 @@
-package user
+package misesid
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/mises-id/sdk/types"
@@ -37,19 +38,21 @@ const (
 	TxURLPath = "mises/tx"
 )
 
-func MakeGetUrl(urlPath string, queryParams string, cuser types.MUser) (string, error) {
-	signerMisesID := cuser.MisesID()
-	queryRequest := urlPath + "?" + queryParams + "&" + "signer=" + signerMisesID
-	signed, nonce, err := Sign(cuser, queryRequest)
+func MakeGetUrl(urlPath string, queryParams string, signer types.MSigner) (string, error) {
+	signerMisesID := signer.MisesID()
+
+	nonce := strconv.FormatInt(time.Now().UTC().Unix(), 10)
+	queryRequest := urlPath + "?" + queryParams + "&nonce=" + nonce + "&signer=" + signerMisesID
+	signed, err := signer.Sign(queryRequest)
 	if err != nil {
 		return "", err
 	}
 
-	url := APIHost + queryRequest + "&sig=" + signed + "&nonce=" + nonce
+	url := APIHost + queryRequest + "&sig=" + signed
 	return url, nil
 }
 
-func HttpGetTx(sessionID string, cuser types.MUser) ([]byte, error) {
+func HttpGetTx(sessionID string, cuser types.MSigner) ([]byte, error) {
 	url, err := MakeGetUrl(TxURLPath, "txhash="+sessionID, cuser)
 	if err != nil {
 		return nil, err
@@ -62,7 +65,7 @@ func HttpGetTx(sessionID string, cuser types.MUser) ([]byte, error) {
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
-func WaitResp(t WaitTask, cuser types.MUser) {
+func WaitResp(t WaitTask, cuser types.MSigner) {
 
 	for i := 0; i < 12; i++ {
 		time.Sleep(time.Second * 5)
@@ -87,13 +90,17 @@ func WaitResp(t WaitTask, cuser types.MUser) {
 	wrChan <- &r
 }
 
-func BuildPostForm(msg interface{}, cuser types.MUser) (url.Values, error) {
+func BuildPostForm(msg interface{}, cuser types.MSigner) (url.Values, error) {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
 	msgStr := string(msgBytes)
-	signed, nonce, err := Sign(cuser, msgStr)
+	nonce := strconv.FormatInt(time.Now().UTC().Unix(), 10)
+	sigData := url.Values{}
+	sigData.Set("msg", msgStr)
+	sigData.Set("nonce", nonce)
+	signed, err := cuser.Sign(sigData.Encode())
 	if err != nil {
 		return nil, err
 	}
@@ -109,19 +116,19 @@ func BuildPostForm(msg interface{}, cuser types.MUser) (url.Values, error) {
 }
 
 // Retry update to frontend
-func CreateUser(cuser types.MUser) (string, error) {
+func CreateMisesID(signer types.MSigner) (string, error) {
 	msg := MsgCreateMisesID{
-		MsgReqBase: MsgReqBase{cuser.MisesID()},
-		PubKey:     cuser.PubKEY(),
+		MsgReqBase: MsgReqBase{signer.MisesID()},
+		PubKey:     signer.PubKey(),
 	}
-	v, err := BuildPostForm(&msg, cuser)
+	v, err := BuildPostForm(&msg, signer)
 	if err != nil {
 		return "", err
 	}
 
-	return Set2Mises(cuser, APIHost+MisesIDURLPath, v)
+	return Set2Mises(signer, APIHost+MisesIDURLPath, v)
 }
-func GetUser(cuser types.MUser, misesid string) (string, error) {
+func GetMisesID(cuser types.MSigner, misesid string) (string, error) {
 	url, err := MakeGetUrl(MisesIDURLPath, "mises_id="+misesid, cuser)
 	if err != nil {
 		return "", err
@@ -137,11 +144,11 @@ func GetUser(cuser types.MUser, misesid string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return ParseGetUserResp(body)
+	return ParseGetMisesIDResp(body)
 }
 
 // retry up to frontend
-func GetUInfo(cuser types.MUser, misesid string) (*MisesUserInfo, error) {
+func GetUInfo(cuser types.MSigner, misesid string) (*MisesUserInfo, error) {
 	url, err := MakeGetUrl(UInfoURLPath, "mises_id="+misesid, cuser)
 	if err != nil {
 		return nil, err
@@ -175,7 +182,7 @@ func GetUInfo(cuser types.MUser, misesid string) (*MisesUserInfo, error) {
 
 }
 
-func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
+func GetFollowing(cuser types.MSigner, misesid string) ([]string, error) {
 	url, err := MakeGetUrl(FollowingURLPath, "filter=following&mises_id="+misesid, cuser)
 	if err != nil {
 		return nil, err
@@ -203,7 +210,7 @@ func GetFollowing(cuser types.MUser, misesid string) ([]string, error) {
 	return mids, nil
 }
 
-func SetUInfo(cuser types.MUser, uinfo *MisesUserInfo) (string, error) {
+func SetUInfo(cuser types.MSigner, uinfo *MisesUserInfo) (string, error) {
 	uinfoByte, err := json.Marshal(uinfo)
 	if err != nil {
 		return "", err
@@ -230,7 +237,7 @@ func SetUInfo(cuser types.MUser, uinfo *MisesUserInfo) (string, error) {
 	return Set2Mises(cuser, APIHost+UInfoURLPath, v)
 }
 
-func SetFollowing(cuser types.MUser, followingId string, op string) (string, error) {
+func SetFollowing(cuser types.MSigner, followingId string, op string) (string, error) {
 	msg := MsgFollowMisesID{
 		MsgReqBase: MsgReqBase{cuser.MisesID()},
 		TargetID:   followingId,
@@ -244,7 +251,7 @@ func SetFollowing(cuser types.MUser, followingId string, op string) (string, err
 	return Set2Mises(cuser, APIHost+FollowingURLPath, v)
 }
 
-func Set2Mises(cuser types.MUser, url string, v url.Values) (string, error) {
+func Set2Mises(cuser types.MSigner, url string, v url.Values) (string, error) {
 	fmt.Printf("post url is: %s\n", url)
 	resp, err := http.PostForm(url, v)
 	if err != nil {
@@ -315,15 +322,15 @@ func ParseGetUserInfoResp(body []byte) (*MsgGetUserInfoResp, error) {
 
 	return &r, nil
 }
-func ParseGetUserResp(body []byte) (string, error) {
-	var r MsgGetUserResp
+func ParseGetMisesIDResp(body []byte) (string, error) {
+	var r MsgGetMisesIDResp
 
 	err := json.Unmarshal(body, &r)
 	if err != nil {
 		return "", err
 	}
-	if r.Code != 0 {
-		return "", fmt.Errorf("failed to get user:" + r.Error)
+	if r.Code != 0 || len(r.Error) > 0 {
+		return "", fmt.Errorf("failed to get mises id:" + r.Error)
 	}
 
 	return r.PubKey, nil

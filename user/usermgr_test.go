@@ -27,12 +27,12 @@ func CreateRandomUser(t *testing.T) (*MisesUserMgr, *MisesUser) {
 func TestUserMgrCreate(t *testing.T) {
 	_, user := CreateRandomUser(t)
 
-	privKeyCreated := user.PrivKEY()
+	privKeyCreated := user.PrivKey()
 
 	err := user.LoadKeyStore("123456")
 	assert.NoError(t, err)
 
-	assert.EqualString(t, privKeyCreated, user.PrivKEY())
+	assert.EqualString(t, privKeyCreated, user.PrivKey())
 }
 
 func TestUserMgrList(t *testing.T) {
@@ -61,16 +61,16 @@ func TestUserMgrSetActivate(t *testing.T) {
 	_, user := CreateRandomUser(t)
 
 	err := user.LoadKeyStore("1")
-	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	assert.EqualString(t, err.Error(), misesid.ErrorMsgWrongPassword)
 
 	err = user.LoadKeyStore("12")
-	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	assert.EqualString(t, err.Error(), misesid.ErrorMsgWrongPassword)
 	err = user.LoadKeyStore("123")
-	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	assert.EqualString(t, err.Error(), misesid.ErrorMsgWrongPassword)
 	err = user.LoadKeyStore("1234")
-	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	assert.EqualString(t, err.Error(), misesid.ErrorMsgWrongPassword)
 	err = user.LoadKeyStore("12345")
-	assert.EqualString(t, err.Error(), ErrorMsgWrongPassword)
+	assert.EqualString(t, err.Error(), misesid.ErrorMsgWrongPassword)
 	err = user.LoadKeyStore("123456")
 	assert.NoError(t, err)
 }
