@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -38,7 +40,7 @@ func PollTxSync(clientCtx client.Context, tx *sdk.TxResponse) (err error) {
 	var errCount int = 0
 	for {
 
-		err = PollTx(clientCtx, tx.TxHash)
+		resTx, err := PollTx(clientCtx, tx.TxHash)
 
 		if err != nil {
 
@@ -49,33 +51,28 @@ func PollTxSync(clientCtx client.Context, tx *sdk.TxResponse) (err error) {
 			time.Sleep(2 * time.Second)
 			continue
 		} else {
+
+			if resTx.Height == 0 || resTx.TxResult.Code != 0 {
+				return fmt.Errorf("tx fail [" + tx.TxHash + "] " + resTx.TxResult.Log)
+			}
 			break
 		}
 
 	}
 	return
 }
-func PollTx(clientCtx client.Context, txHash string) error {
+func PollTx(clientCtx client.Context, txHash string) (*ctypes.ResultTx, error) {
 	hash, err := hex.DecodeString(txHash)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	node, err := clientCtx.GetNode()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	resTx, err := node.Tx(context.Background(), hash, true)
-	if err != nil {
-		return err
-	}
-
-	if resTx.Height == 0 {
-		return fmt.Errorf("tx fail [" + txHash + "] " + resTx.TxResult.Log)
-	}
-
-	return nil
+	return node.Tx(context.Background(), hash, true)
 }
 
 func StarSeqGenerator(clientCtx client.Context) error {
@@ -126,7 +123,7 @@ func StarSeqGenerator(clientCtx client.Context) error {
 
 func prepareFactory(clientCtx client.Context, txf tx.Factory) tx.Factory {
 	gasSetting := flags.GasSetting{
-		Simulate: false,
+		Simulate: true,
 		Gas:      100000,
 	}
 	txf = txf.
@@ -138,7 +135,7 @@ func prepareFactory(clientCtx client.Context, txf tx.Factory) tx.Factory {
 		WithGas(gasSetting.Gas).
 		WithSimulateAndExecute(gasSetting.Simulate).
 		WithTimeoutHeight(0).
-		WithGasAdjustment(2.0).
+		WithGasAdjustment(1.05).
 		WithMemo("mises go sdk").
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT)
 
@@ -149,28 +146,10 @@ func prepareFactory(clientCtx client.Context, txf tx.Factory) tx.Factory {
 	return txf
 }
 
-// CalculateGas simulates the execution of a transaction and returns the
-// simulation response obtained by the query and the adjusted gas amount.
-func calculateGas(
-	clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg,
-) (*sdk.Result, uint64, error) {
-	txBytes, err := txf.BuildSimTx(msgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	gasInfo, result, err := types.Simulater(txBytes)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return result, uint64(txf.GasAdjustment() * float64(gasInfo.GasUsed)), nil
-}
-
 func broadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sdk.TxResponse, error) {
 
 	if txf.SimulateAndExecute() || clientCtx.Simulate {
-		_, adjusted, err := calculateGas(clientCtx, txf, msgs...)
+		_, adjusted, err := tx.CalculateGas(clientCtx, txf, msgs...)
 		if err != nil {
 			return nil, err
 		}

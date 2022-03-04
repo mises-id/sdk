@@ -240,7 +240,7 @@ func (app *MisesApp) startCmdRoutine() {
 
 			err := app.RunSync(cmd)
 			if err != nil {
-				fmt.Printf("RegisterUser fail: %s\n", err.Error())
+				fmt.Printf("cmd fail: %s\n", err.Error())
 				if app.listener != nil {
 					app.listener.OnFailed(cmd)
 				}
@@ -284,7 +284,7 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		return err
 	}
 
-	fmt.Printf("generated tx: %s\n", tx)
+	fmt.Printf("generated tx: %s\n", tx.TxHash)
 	if app.listener != nil {
 		cmd.SetTxID(tx.TxHash)
 		app.listener.OnTxGenerated(cmd)
