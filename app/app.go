@@ -43,6 +43,8 @@ type MisesApp struct {
 	pendingCmds chan types.MisesAppCmd
 
 	listener types.MisesAppCmdListener
+
+	seqChan *misesid.SeqChan
 }
 
 type MisesAppCmdBase struct {
@@ -196,13 +198,13 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 	app.appDid = types.MisesAppIDPrefix + key.GetAddress().String()
 	app.info = info
 
-	if err := misesid.StarSeqGenerator(app.clientCtx); err != nil {
+	if app.seqChan, err = misesid.StarSeqGenerator(app.clientCtx); err != nil {
 		return err
 	}
 
 	if err := misesid.CheckDid(app.clientCtx, app.MisesID()); err != nil {
 
-		tx, err := misesid.CreateDid(app.clientCtx, app.pubKey, app.MisesID())
+		tx, err := misesid.CreateDid(app.clientCtx, app.seqChan, app.pubKey, app.MisesID())
 		if err != nil {
 			return err
 		}
@@ -210,7 +212,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		if err != nil {
 			return err
 		}
-		tx, err = misesid.UpdateAppInfo(app.clientCtx, app.MisesID(), misestypes.PublicAppInfo{
+		tx, err = misesid.UpdateAppInfo(app.clientCtx, app.seqChan, app.MisesID(), misestypes.PublicAppInfo{
 			Name:      app.info.AppName(),
 			Domains:   app.info.Domains(),
 			Developer: app.info.Developer(),
@@ -261,7 +263,7 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 			return fmt.Errorf("no pubkey")
 		}
 
-		tx, err := misesid.CreateDid(app.clientCtx, cmd.PubKey(), cmd.MisesUID())
+		tx, err := misesid.CreateDid(app.clientCtx, app.seqChan, cmd.PubKey(), cmd.MisesUID())
 		if err != nil {
 			return err
 		}
@@ -274,9 +276,9 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 	var tx *sdk.TxResponse = nil
 	var err error
 	if cmdapp, ok := cmd.(*RegisterUserCmd); ok {
-		tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
+		tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
 	} else if cmdapp, ok := cmd.(*FaucetCmd); ok {
-		tx, err = misesid.Transfer(app.clientCtx, app.MisesID(), cmdapp.MisesUID(), cmdapp.CoinUMIS())
+		tx, err = misesid.Transfer(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.CoinUMIS())
 	} else {
 		return fmt.Errorf("known cmd")
 	}
