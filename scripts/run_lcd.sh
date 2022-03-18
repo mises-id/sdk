@@ -1,0 +1,1 @@
+./mises-service light mainnet --log-level trace --listening-address  tcp://0.0.0.0:26657 --primary-addr https://e1.mises.site:443 --witness-addr  https://e2.mises.site:443 --trusted-height 7869 --trusted-hash C39B2779BC2EF1AC3F150A350D87C139B8258BC41AD2C43D80B6284D7FEA40D2

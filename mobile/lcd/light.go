@@ -84,16 +84,19 @@ func (lcd *mLCD) Serve(listen string) error {
 	ctx := context.Background()
 	// ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
 	cmd := commands.LightCmd()
-	cmd.SetArgs([]string{
+	args := []string{
 		lcd.chainId,
 		"--listening-address=" + listen,
 		"--log-level=trace",
 		"--primary-addr=" + lcd.primaryAddress,   //http://e1.mises.site:26657
 		"--witness-addr=" + lcd.witnessAddresses, //http://e2.mises.site:26657
-		"--trusted-height=" + lcd.trustHeight,    //963312
-		"--trusted-hash=" + lcd.trustHash,        //219B062359064E5A00062624062D775C63AFFEC96361B40894F3C7B81437A660
 		"--dir=" + types.NodeHome + "/light",
-	})
+	}
+	if lcd.trustHeight != "" && lcd.trustHash != "" {
+		args = append(args, "--trusted-height="+lcd.trustHeight)
+		args = append(args, "--trusted-hash="+lcd.trustHash)
+	}
+	cmd.SetArgs(args)
 
 	err = cmd.ExecuteContext(ctx)
 	return err

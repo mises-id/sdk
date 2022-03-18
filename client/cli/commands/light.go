@@ -109,8 +109,11 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("can't create a db: %w", err)
 	}
+
 	// create a prefixed db on the chainID
 	db := dbm.NewPrefixDB(lightDB, []byte(chainID))
+
+	defer db.Close()
 
 	primaryAddress := ""
 
