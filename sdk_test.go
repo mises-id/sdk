@@ -183,6 +183,60 @@ func TestSdkRegisterUser(t *testing.T) {
 
 }
 
+type RegisterUserCallback struct {
+	done         chan bool
+	successCount int
+}
+
+func (cb *RegisterUserCallback) OnTxGenerated(cmd types.MisesAppCmd) {
+	fmt.Printf("OnTxGenerated %s\n", cmd.TxID())
+}
+func (cb *RegisterUserCallback) OnSucceed(cmd types.MisesAppCmd) {
+	fmt.Printf("OnSucceed %d\n", cb.successCount)
+	cb.successCount += 1
+	if cb.successCount == 100 {
+		cb.done <- true
+	}
+}
+func (cb *RegisterUserCallback) OnFailed(cmd types.MisesAppCmd) {
+	fmt.Printf("OnFailed\n")
+	cb.done <- false
+}
+func (cb *RegisterUserCallback) wait() {
+	<-cb.done
+}
+
+func BenchmarkSdkRegisterUserFlooding(t *testing.B) {
+	mo := sdk.MSdkOption{
+		ChainID: "mainnet",
+		Debug:   true,
+	}
+
+	appinfo := types.NewMisesAppInfoReadonly(
+		"Mises Discover",
+		"https://www.mises.site",
+		"https://home.mises.site",
+		[]string{"mises.site"},
+		"Mises Network",
+	)
+	_, app := sdk.NewSdkForApp(mo, appinfo)
+
+	callback := &RegisterUserCallback{}
+	callback.done = make(chan bool)
+	app.SetListener(callback)
+	for userIndex := 0; userIndex < 100; userIndex++ {
+		newUser := CreateRandomUser()
+
+		err := app.RunAsync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 1000), false)
+		if err != nil {
+			fmt.Printf(err.Error())
+			return
+		}
+	}
+	callback.wait()
+
+}
+
 type FaucetCallback struct {
 }
 

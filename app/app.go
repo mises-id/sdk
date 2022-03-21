@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -42,6 +43,10 @@ type MisesApp struct {
 
 	pendingCmds chan types.MisesAppCmd
 
+	waitingCmds chan types.MisesAppCmd
+
+	failedTxCounter map[string]int
+
 	listener types.MisesAppCmdListener
 
 	seqChan *misesid.SeqChan
@@ -51,6 +56,7 @@ type MisesAppCmdBase struct {
 	misesUID string
 	pubKey   string
 	txid     string
+	waitTx   bool
 }
 
 func (cmd *MisesAppCmdBase) MisesUID() string {
@@ -66,6 +72,14 @@ func (cmd *MisesAppCmdBase) TxID() string {
 
 func (cmd *MisesAppCmdBase) SetTxID(txid string) {
 	cmd.txid = txid
+}
+
+func (cmd *MisesAppCmdBase) WaitTx() bool {
+	return cmd.waitTx
+}
+
+func (cmd *MisesAppCmdBase) SetWaitTx(waitTx bool) {
+	cmd.waitTx = waitTx
 }
 
 type RegisterUserCmd struct {
@@ -233,8 +247,35 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 	return nil
 }
 
+func (app *MisesApp) asynWaitCmd(cmd types.MisesAppCmd) {
+	if cmd.TxID() == "" {
+		if app.listener != nil {
+			app.listener.OnFailed(cmd)
+		}
+		return
+	}
+	if failCount, ok := app.failedTxCounter[cmd.TxID()]; ok {
+		//do something here
+		if failCount > 10 {
+			delete(app.failedTxCounter, cmd.TxID())
+			if app.listener != nil {
+				app.listener.OnFailed(cmd)
+			}
+			return
+		}
+		app.failedTxCounter[cmd.TxID()] = failCount + 1
+	} else {
+		app.failedTxCounter[cmd.TxID()] = 0
+	}
+	go func(cmd types.MisesAppCmd) {
+		time.Sleep(2 * time.Second)
+		app.waitingCmds <- cmd
+	}(cmd)
+}
 func (app *MisesApp) startCmdRoutine() {
 	app.pendingCmds = make(chan types.MisesAppCmd, maxPendingCmds)
+	app.waitingCmds = make(chan types.MisesAppCmd, maxPendingCmds)
+	app.failedTxCounter = map[string]int{}
 	go func() {
 		for {
 
@@ -247,8 +288,37 @@ func (app *MisesApp) startCmdRoutine() {
 					app.listener.OnFailed(cmd)
 				}
 			} else {
-				if app.listener != nil {
-					app.listener.OnSucceed(cmd)
+				if cmd.WaitTx() {
+					if app.listener != nil {
+						app.listener.OnSucceed(cmd)
+					}
+				} else {
+					app.asynWaitCmd(cmd)
+				}
+
+			}
+
+		}
+	}()
+
+	go func() {
+		for {
+
+			cmd := <-app.waitingCmds
+
+			resTx, err := misesid.PollTx(app.clientCtx, cmd.TxID())
+			if err != nil {
+				app.asynWaitCmd(cmd)
+			} else {
+				delete(app.failedTxCounter, cmd.TxID())
+				if resTx.Height == 0 || resTx.TxResult.Code != 0 {
+					if app.listener != nil {
+						app.listener.OnFailed(cmd)
+					}
+				} else {
+					if app.listener != nil {
+						app.listener.OnSucceed(cmd)
+					}
 				}
 			}
 
@@ -267,10 +337,13 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		if err != nil {
 			return err
 		}
-		err = misesid.PollTxSync(app.clientCtx, tx)
-		if err != nil {
-			return err
+		if cmd.WaitTx() {
+			err = misesid.PollTxSync(app.clientCtx, tx)
+			if err != nil {
+				return err
+			}
 		}
+
 	}
 
 	var tx *sdk.TxResponse = nil
@@ -286,18 +359,24 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		return err
 	}
 
-	fmt.Printf("generated tx: %s\n", tx.TxHash)
 	if app.listener != nil {
 		cmd.SetTxID(tx.TxHash)
 		app.listener.OnTxGenerated(cmd)
 	}
-	return misesid.PollTxSync(app.clientCtx, tx)
+	if cmd.WaitTx() {
+		err = misesid.PollTxSync(app.clientCtx, tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (app *MisesApp) RunAsync(cmd types.MisesAppCmd) error {
+func (app *MisesApp) RunAsync(cmd types.MisesAppCmd, wait bool) error {
 	if len(app.pendingCmds) == maxPendingCmds {
 		return fmt.Errorf("too many pending commands")
 	}
+	cmd.SetWaitTx(wait)
 	app.pendingCmds <- cmd
 
 	return nil
@@ -349,12 +428,12 @@ func (app *MisesApp) Signer() types.MSigner {
 
 func (app *MisesApp) NewRegisterUserCmd(uid string, pubkey string, feeGrantedPerDay int64) types.MisesAppCmd {
 	return &RegisterUserCmd{
-		MisesAppCmdBase{uid, pubkey, ""}, feeGrantedPerDay,
+		MisesAppCmdBase{uid, pubkey, "", true}, feeGrantedPerDay,
 	}
 }
 func (app *MisesApp) NewFaucetCmd(uid string, pubkey string, coinUMIS int64) types.MisesAppCmd {
 	return &FaucetCmd{
-		MisesAppCmdBase{uid, pubkey, ""}, coinUMIS,
+		MisesAppCmdBase{uid, pubkey, "", true}, coinUMIS,
 	}
 }
 

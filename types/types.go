@@ -84,6 +84,9 @@ type MisesAppCmd interface {
 	PubKey() string
 	TxID() string
 	SetTxID(txid string)
+
+	WaitTx() bool
+	SetWaitTx(wait bool)
 }
 
 type MisesAppCmdListener interface {
@@ -102,7 +105,7 @@ type MApp interface {
 
 	AddAuth(misesUID string, permissions []string)
 
-	RunAsync(cmd MisesAppCmd) error
+	RunAsync(cmd MisesAppCmd, wait bool) error
 
 	RunSync(cmd MisesAppCmd) error
 
