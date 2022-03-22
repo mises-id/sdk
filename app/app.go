@@ -349,6 +349,10 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		if err != nil {
 			return err
 		}
+		if app.listener != nil {
+			cmd.SetTxID(tx.TxHash)
+			app.listener.OnTxGenerated(cmd)
+		}
 		if cmd.WaitTx() {
 			err = misesid.PollTxSync(app.clientCtx, tx)
 			if err != nil {
