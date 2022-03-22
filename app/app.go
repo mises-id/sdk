@@ -257,7 +257,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 func (app *MisesApp) asynWaitCmd(cmd types.MisesAppCmd) {
 	if cmd.TxID() == "" {
 		if app.listener != nil {
-			app.listener.OnFailed(cmd)
+			app.listener.OnFailed(cmd, fmt.Errorf("no txid"))
 		}
 		return
 	}
@@ -266,7 +266,7 @@ func (app *MisesApp) asynWaitCmd(cmd types.MisesAppCmd) {
 		if failCount > 10 {
 			delete(app.failedTxCounter, cmd.TxID())
 			if app.listener != nil {
-				app.listener.OnFailed(cmd)
+				app.listener.OnFailed(cmd, fmt.Errorf("fail after 10 try"))
 			}
 			return
 		}
@@ -292,7 +292,7 @@ func (app *MisesApp) startCmdRoutine() {
 			if err != nil {
 				logger.Info("cmd fail: ", err.Error())
 				if app.listener != nil {
-					app.listener.OnFailed(cmd)
+					app.listener.OnFailed(cmd, err)
 				}
 			} else {
 				if cmd.WaitTx() {
@@ -320,7 +320,7 @@ func (app *MisesApp) startCmdRoutine() {
 				delete(app.failedTxCounter, cmd.TxID())
 				if resTx.Height == 0 || resTx.TxResult.Code != 0 {
 					if app.listener != nil {
-						app.listener.OnFailed(cmd)
+						app.listener.OnFailed(cmd, fmt.Errorf("fail with code %d", resTx.TxResult.Code))
 					}
 				} else {
 					if app.listener != nil {

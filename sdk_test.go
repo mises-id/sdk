@@ -200,7 +200,7 @@ func (cb *RegisterUserCallback) OnSucceed(cmd types.MisesAppCmd) {
 		cb.done <- true
 	}
 }
-func (cb *RegisterUserCallback) OnFailed(cmd types.MisesAppCmd) {
+func (cb *RegisterUserCallback) OnFailed(cmd types.MisesAppCmd, err error) {
 	fmt.Printf("OnFailed %s\n", cmd.TxID())
 	cb.failCount += 1
 	if cb.failCount > 10 {
@@ -252,7 +252,7 @@ func (cb *FaucetCallback) OnTxGenerated(cmd types.MisesAppCmd) {
 func (cb *FaucetCallback) OnSucceed(cmd types.MisesAppCmd) {
 	fmt.Printf("OnSucceed\n")
 }
-func (cb *FaucetCallback) OnFailed(cmd types.MisesAppCmd) {
+func (cb *FaucetCallback) OnFailed(cmd types.MisesAppCmd, err error) {
 	fmt.Printf("OnFailed\n")
 }
 

@@ -92,7 +92,7 @@ type MisesAppCmd interface {
 type MisesAppCmdListener interface {
 	OnTxGenerated(cmd MisesAppCmd)
 	OnSucceed(cmd MisesAppCmd)
-	OnFailed(cmd MisesAppCmd)
+	OnFailed(cmd MisesAppCmd, err error)
 }
 
 type MApp interface {
