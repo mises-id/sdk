@@ -186,21 +186,26 @@ func TestSdkRegisterUser(t *testing.T) {
 type RegisterUserCallback struct {
 	done         chan bool
 	successCount int
+	failCount    int
+	maxCount     int
 }
 
 func (cb *RegisterUserCallback) OnTxGenerated(cmd types.MisesAppCmd) {
 	fmt.Printf("OnTxGenerated %s\n", cmd.TxID())
 }
 func (cb *RegisterUserCallback) OnSucceed(cmd types.MisesAppCmd) {
-	fmt.Printf("OnSucceed %d\n", cb.successCount)
+	fmt.Printf("OnSucceed %d %s\n", cb.successCount, cmd.TxID())
 	cb.successCount += 1
-	if cb.successCount == 100 {
+	if cb.successCount == cb.maxCount {
 		cb.done <- true
 	}
 }
 func (cb *RegisterUserCallback) OnFailed(cmd types.MisesAppCmd) {
-	fmt.Printf("OnFailed\n")
-	cb.done <- false
+	fmt.Printf("OnFailed %s\n", cmd.TxID())
+	cb.failCount += 1
+	if cb.failCount > 10 {
+		cb.done <- true
+	}
 }
 func (cb *RegisterUserCallback) wait() {
 	<-cb.done
@@ -208,7 +213,7 @@ func (cb *RegisterUserCallback) wait() {
 
 func BenchmarkSdkRegisterUserFlooding(t *testing.B) {
 	mo := sdk.MSdkOption{
-		ChainID: "mainnet",
+		ChainID: "test",
 		Debug:   true,
 	}
 
@@ -223,8 +228,9 @@ func BenchmarkSdkRegisterUserFlooding(t *testing.B) {
 
 	callback := &RegisterUserCallback{}
 	callback.done = make(chan bool)
+	callback.maxCount = 10000
 	app.SetListener(callback)
-	for userIndex := 0; userIndex < 100; userIndex++ {
+	for userIndex := 0; userIndex < callback.maxCount; userIndex++ {
 		newUser := CreateRandomUser()
 
 		err := app.RunAsync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 1000), false)

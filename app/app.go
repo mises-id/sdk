@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -30,6 +31,12 @@ import (
 	misestypes "github.com/mises-id/mises-tm/x/misestm/types"
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
+
+	"github.com/tendermint/tendermint/libs/log"
+)
+
+var (
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "app")
 )
 
 type MisesApp struct {
@@ -178,12 +185,12 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		if err != nil {
 			return err
 		}
-		fmt.Printf("app mnemonics is: %s\n", mnemonics)
+		logger.Info("app mnemonics is: ", mnemonics)
 		key, err = kr.NewAccount(appKey, mnemonics, passPhrase, "", hd.Secp256k1)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("app address is: %s\n", key.GetAddress().String())
+		logger.Info("app address is: ", key.GetAddress().String())
 
 	}
 
@@ -283,7 +290,7 @@ func (app *MisesApp) startCmdRoutine() {
 
 			err := app.RunSync(cmd)
 			if err != nil {
-				fmt.Printf("cmd fail: %s\n", err.Error())
+				logger.Info("cmd fail: ", err.Error())
 				if app.listener != nil {
 					app.listener.OnFailed(cmd)
 				}
