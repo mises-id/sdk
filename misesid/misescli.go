@@ -104,14 +104,11 @@ func BuildPostForm(msg interface{}, cuser types.MSigner) (url.Values, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("msg is: %s\n", msgStr)
-	fmt.Printf("signed is %s\n", signed)
 
 	v := url.Values{}
 	v.Set("msg", msgStr)
 	v.Set("nonce", nonce)
 	v.Set("sig", signed)
-	fmt.Printf("post form is: %s\n", v.Encode())
 	return v, nil
 }
 
@@ -215,7 +212,6 @@ func SetUInfo(cuser types.MSigner, uinfo *MisesUserInfo) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("uinfo is: %s\n", string(uinfoByte))
 	enc, iv, err := Encrypt(cuser, uinfoByte)
 	if err != nil {
 		return "", err
@@ -252,7 +248,6 @@ func SetFollowing(cuser types.MSigner, followingId string, op string) (string, e
 }
 
 func Set2Mises(cuser types.MSigner, url string, v url.Values) (string, error) {
-	fmt.Printf("post url is: %s\n", url)
 	resp, err := http.PostForm(url, v)
 	if err != nil {
 		return "", err

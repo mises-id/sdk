@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -25,11 +27,10 @@ type SeqInfo struct {
 	nextNum uint64
 	nextSeq uint64
 }
-
-var (
+type SeqChan struct {
 	SeqCmdChan  chan int
 	SeqInfoChan chan SeqInfo
-)
+}
 
 func PollTxSync(clientCtx client.Context, tx *sdk.TxResponse) (err error) {
 	if tx.Code != 0 {
@@ -38,7 +39,7 @@ func PollTxSync(clientCtx client.Context, tx *sdk.TxResponse) (err error) {
 	var errCount int = 0
 	for {
 
-		err = PollTx(clientCtx, tx.TxHash)
+		resTx, err := PollTx(clientCtx, tx.TxHash)
 
 		if err != nil {
 
@@ -49,36 +50,31 @@ func PollTxSync(clientCtx client.Context, tx *sdk.TxResponse) (err error) {
 			time.Sleep(2 * time.Second)
 			continue
 		} else {
+
+			if resTx.Height == 0 || resTx.TxResult.Code != 0 {
+				return fmt.Errorf("tx fail [" + tx.TxHash + "] " + resTx.TxResult.Log)
+			}
 			break
 		}
 
 	}
 	return
 }
-func PollTx(clientCtx client.Context, txHash string) error {
+func PollTx(clientCtx client.Context, txHash string) (*ctypes.ResultTx, error) {
 	hash, err := hex.DecodeString(txHash)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	node, err := clientCtx.GetNode()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	resTx, err := node.Tx(context.Background(), hash, true)
-	if err != nil {
-		return err
-	}
-
-	if resTx.Height == 0 {
-		return fmt.Errorf("tx fail [" + txHash + "] " + resTx.TxResult.Log)
-	}
-
-	return nil
+	return node.Tx(context.Background(), hash, true)
 }
 
-func StarSeqGenerator(clientCtx client.Context) error {
+func StarSeqGenerator(clientCtx client.Context) (*SeqChan, error) {
 
 	seqChan := make(chan SeqInfo, 1)
 	cmdChan := make(chan int, 1)
@@ -88,10 +84,10 @@ func StarSeqGenerator(clientCtx client.Context) error {
 	if clientCtx.Keyring != nil {
 		key, err = clientCtx.Keyring.KeyByAddress(clientCtx.FromAddress)
 	} else {
-		return fmt.Errorf("no key ring")
+		return nil, fmt.Errorf("no key ring")
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	keyaddr := key.GetAddress()
 
@@ -119,14 +115,15 @@ func StarSeqGenerator(clientCtx client.Context) error {
 		}
 
 	}()
-	SeqInfoChan = seqChan
-	SeqCmdChan = cmdChan
-	return nil
+	return &SeqChan{
+		cmdChan,
+		seqChan,
+	}, nil
 }
 
-func prepareFactory(clientCtx client.Context, txf tx.Factory) tx.Factory {
+func prepareFactory(clientCtx client.Context, seqChan *SeqChan, txf tx.Factory) tx.Factory {
 	gasSetting := flags.GasSetting{
-		Simulate: false,
+		Simulate: true,
 		Gas:      100000,
 	}
 	txf = txf.
@@ -138,44 +135,25 @@ func prepareFactory(clientCtx client.Context, txf tx.Factory) tx.Factory {
 		WithGas(gasSetting.Gas).
 		WithSimulateAndExecute(gasSetting.Simulate).
 		WithTimeoutHeight(0).
-		WithGasAdjustment(2.0).
+		WithGasAdjustment(1.05).
 		WithMemo("mises go sdk").
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT)
 
-	seq := <-SeqInfoChan
+	seq := <-seqChan.SeqInfoChan
 	txf = txf.WithAccountNumber(seq.nextNum)
 	txf = txf.WithSequence(seq.nextSeq)
 
 	return txf
 }
 
-// CalculateGas simulates the execution of a transaction and returns the
-// simulation response obtained by the query and the adjusted gas amount.
-func calculateGas(
-	clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg,
-) (*sdk.Result, uint64, error) {
-	txBytes, err := txf.BuildSimTx(msgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	gasInfo, result, err := types.Simulater(txBytes)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return result, uint64(txf.GasAdjustment() * float64(gasInfo.GasUsed)), nil
-}
-
-func broadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sdk.TxResponse, error) {
+func broadcastTx(clientCtx client.Context, seqChan *SeqChan, txf tx.Factory, msgs ...sdk.Msg) (*sdk.TxResponse, error) {
 
 	if txf.SimulateAndExecute() || clientCtx.Simulate {
-		_, adjusted, err := calculateGas(clientCtx, txf, msgs...)
-		if err != nil {
-			return nil, err
+		_, adjusted, err := tx.CalculateGas(clientCtx, txf, msgs...)
+		if err == nil {
+			txf = txf.WithGas(adjusted)
 		}
 
-		txf = txf.WithGas(adjusted)
 	}
 	if clientCtx.Simulate {
 		return nil, nil
@@ -203,13 +181,10 @@ func broadcastTx(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (*sd
 	//types.Logger.Error(fmt.Sprintf("BroadcastTx start with seq %v", txf.Sequence()))
 
 	res, err := clientCtx.BroadcastTx(txBytes)
-	if err != nil {
-		return nil, err
-	}
 
 	//types.Logger.Error(fmt.Sprintf("BroadcastTx finish with code %v", res.Code))
 
-	return postBroadcastTx(clientCtx, res, err)
+	return res, err
 }
 
 func prepareSigner(clientCtx client.Context) (client.Context, error) {
@@ -249,7 +224,7 @@ func CheckDid(clientCtx client.Context, misesID string) error {
 
 	return nil
 }
-func CreateDid(clientCtx client.Context, pubKeyHex string, misesID string) (*sdk.TxResponse, error) {
+func CreateDid(clientCtx client.Context, seqChan *SeqChan, pubKeyHex string, misesID string) (*sdk.TxResponse, error) {
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
 		return nil, err
@@ -282,29 +257,32 @@ func CreateDid(clientCtx client.Context, pubKeyHex string, misesID string) (*sdk
 
 	}
 	txf := tx.Factory{}
-	txf = prepareFactory(clientCtx, txf)
+	txf = prepareFactory(clientCtx, seqChan, txf)
 
-	return broadcastTx(clientCtx, txf, msg)
+	tx, err := broadcastTx(clientCtx, seqChan, txf, msg)
+
+	return postBroadcastTx(clientCtx, seqChan, tx, err)
 }
 
-func postBroadcastTx(clientCtx client.Context, res *sdk.TxResponse, err error) (*sdk.TxResponse, error) {
+func postBroadcastTx(clientCtx client.Context, seqChan *SeqChan, res *sdk.TxResponse, err error) (*sdk.TxResponse, error) {
 
 	if err != nil {
-		SeqCmdChan <- -1
+		//reset cmdSeqChan
+		seqChan.SeqCmdChan <- 1
 		return nil, err
 	}
 
-	if res.Code == sdkerrors.ErrWrongSequence.ABCICode() {
+	if res == nil || res.Code == sdkerrors.ErrWrongSequence.ABCICode() || res.Code == sdkerrors.ErrInvalidSequence.ABCICode() {
 		//reset cmdSeqChan
-		SeqCmdChan <- 1
+		seqChan.SeqCmdChan <- 1
 	} else {
-		SeqCmdChan <- 0
+		seqChan.SeqCmdChan <- 0
 	}
 
 	return res, nil
 }
 
-func UpdateUserInfo(clientCtx client.Context, misesUid string, priInfo types.PrivateUserInfo) (*sdk.TxResponse, error) {
+func UpdateUserInfo(clientCtx client.Context, seqChan *SeqChan, misesUid string, priInfo types.PrivateUserInfo) (*sdk.TxResponse, error) {
 
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
@@ -325,12 +303,14 @@ func UpdateUserInfo(clientCtx client.Context, misesUid string, priInfo types.Pri
 
 	}
 	txf := tx.Factory{}
-	txf = prepareFactory(clientCtx, txf)
+	txf = prepareFactory(clientCtx, seqChan, txf)
 
-	return broadcastTx(clientCtx, txf, msg)
+	tx, err := broadcastTx(clientCtx, seqChan, txf, msg)
+
+	return postBroadcastTx(clientCtx, seqChan, tx, err)
 }
 
-func UpdateUserRelation(clientCtx client.Context, actionStr string, misesUID string, targetUID string) (*sdk.TxResponse, error) {
+func UpdateUserRelation(clientCtx client.Context, seqChan *SeqChan, actionStr string, misesUID string, targetUID string) (*sdk.TxResponse, error) {
 
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
@@ -363,12 +343,14 @@ func UpdateUserRelation(clientCtx client.Context, actionStr string, misesUID str
 
 	}
 	txf := tx.Factory{}
-	txf = prepareFactory(clientCtx, txf)
+	txf = prepareFactory(clientCtx, seqChan, txf)
 
-	return broadcastTx(clientCtx, txf, msg)
+	tx, err := broadcastTx(clientCtx, seqChan, txf, msg)
+
+	return postBroadcastTx(clientCtx, seqChan, tx, err)
 }
 
-func UpdateAppInfo(clientCtx client.Context, misesAppID string, pubInfo types.PublicAppInfo) (*sdk.TxResponse, error) {
+func UpdateAppInfo(clientCtx client.Context, seqChan *SeqChan, misesAppID string, pubInfo types.PublicAppInfo) (*sdk.TxResponse, error) {
 
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
@@ -391,12 +373,14 @@ func UpdateAppInfo(clientCtx client.Context, misesAppID string, pubInfo types.Pu
 		}
 	}
 	txf := tx.Factory{}
-	txf = prepareFactory(clientCtx, txf)
+	txf = prepareFactory(clientCtx, seqChan, txf)
 
-	return broadcastTx(clientCtx, txf, msg)
+	tx, err := broadcastTx(clientCtx, seqChan, txf, msg)
+
+	return postBroadcastTx(clientCtx, seqChan, tx, err)
 }
 
-func UpdateAppFeeGrant(clientCtx client.Context, misesAppID string, misesUid string, amount int64) (*sdk.TxResponse, error) {
+func UpdateAppFeeGrant(clientCtx client.Context, seqChan *SeqChan, misesAppID string, misesUid string, amount int64) (*sdk.TxResponse, error) {
 
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
@@ -454,12 +438,14 @@ func UpdateAppFeeGrant(clientCtx client.Context, misesAppID string, misesUid str
 
 	}
 	txf := tx.Factory{}
-	txf = prepareFactory(clientCtx, txf)
+	txf = prepareFactory(clientCtx, seqChan, txf)
 
-	return broadcastTx(clientCtx, txf, msg)
+	tx, err := broadcastTx(clientCtx, seqChan, txf, msg)
+
+	return postBroadcastTx(clientCtx, seqChan, tx, err)
 }
 
-func Transfer(clientCtx client.Context, misesAppID string, misesUid string, umis int64) (*sdk.TxResponse, error) {
+func Transfer(clientCtx client.Context, seqChan *SeqChan, misesAppID string, misesUid string, umis int64) (*sdk.TxResponse, error) {
 
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {
@@ -489,7 +475,9 @@ func Transfer(clientCtx client.Context, misesAppID string, misesUid string, umis
 
 	}
 	txf := tx.Factory{}
-	txf = prepareFactory(clientCtx, txf)
+	txf = prepareFactory(clientCtx, seqChan, txf)
 
-	return broadcastTx(clientCtx, txf, msg)
+	tx, err := broadcastTx(clientCtx, seqChan, txf, msg)
+
+	return postBroadcastTx(clientCtx, seqChan, tx, err)
 }

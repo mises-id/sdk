@@ -8,7 +8,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -29,6 +31,12 @@ import (
 	misestypes "github.com/mises-id/mises-tm/x/misestm/types"
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
+
+	"github.com/tendermint/tendermint/libs/log"
+)
+
+var (
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "app")
 )
 
 type MisesApp struct {
@@ -42,13 +50,20 @@ type MisesApp struct {
 
 	pendingCmds chan types.MisesAppCmd
 
+	waitingCmds chan types.MisesAppCmd
+
+	failedTxCounter map[string]int
+
 	listener types.MisesAppCmdListener
+
+	seqChan *misesid.SeqChan
 }
 
 type MisesAppCmdBase struct {
 	misesUID string
 	pubKey   string
 	txid     string
+	waitTx   bool
 }
 
 func (cmd *MisesAppCmdBase) MisesUID() string {
@@ -64,6 +79,14 @@ func (cmd *MisesAppCmdBase) TxID() string {
 
 func (cmd *MisesAppCmdBase) SetTxID(txid string) {
 	cmd.txid = txid
+}
+
+func (cmd *MisesAppCmdBase) WaitTx() bool {
+	return cmd.waitTx
+}
+
+func (cmd *MisesAppCmdBase) SetWaitTx(waitTx bool) {
+	cmd.waitTx = waitTx
 }
 
 type RegisterUserCmd struct {
@@ -162,12 +185,12 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		if err != nil {
 			return err
 		}
-		fmt.Printf("app mnemonics is: %s\n", mnemonics)
+		logger.Info("app mnemonics is: ", mnemonics)
 		key, err = kr.NewAccount(appKey, mnemonics, passPhrase, "", hd.Secp256k1)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("app address is: %s\n", key.GetAddress().String())
+		logger.Info("app address is: ", key.GetAddress().String())
 
 	}
 
@@ -196,13 +219,13 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 	app.appDid = types.MisesAppIDPrefix + key.GetAddress().String()
 	app.info = info
 
-	if err := misesid.StarSeqGenerator(app.clientCtx); err != nil {
+	if app.seqChan, err = misesid.StarSeqGenerator(app.clientCtx); err != nil {
 		return err
 	}
 
 	if err := misesid.CheckDid(app.clientCtx, app.MisesID()); err != nil {
 
-		tx, err := misesid.CreateDid(app.clientCtx, app.pubKey, app.MisesID())
+		tx, err := misesid.CreateDid(app.clientCtx, app.seqChan, app.pubKey, app.MisesID())
 		if err != nil {
 			return err
 		}
@@ -210,7 +233,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		if err != nil {
 			return err
 		}
-		tx, err = misesid.UpdateAppInfo(app.clientCtx, app.MisesID(), misestypes.PublicAppInfo{
+		tx, err = misesid.UpdateAppInfo(app.clientCtx, app.seqChan, app.MisesID(), misestypes.PublicAppInfo{
 			Name:      app.info.AppName(),
 			Domains:   app.info.Domains(),
 			Developer: app.info.Developer(),
@@ -231,8 +254,40 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 	return nil
 }
 
+func (app *MisesApp) asynWaitCmd(cmd types.MisesAppCmd, err error) {
+	if cmd.TxID() == "" {
+		if app.listener != nil {
+			app.listener.OnFailed(cmd, fmt.Errorf("no txid"))
+		}
+		return
+	}
+	if failCount, ok := app.failedTxCounter[cmd.TxID()]; ok {
+		//do something here
+		if failCount > 10 {
+			delete(app.failedTxCounter, cmd.TxID())
+			if app.listener != nil {
+				if err != nil {
+					app.listener.OnFailed(cmd, fmt.Errorf("fail after 10 try: %s", err.Error()))
+				} else {
+					app.listener.OnFailed(cmd, fmt.Errorf("fail after 10 try"))
+				}
+
+			}
+			return
+		}
+		app.failedTxCounter[cmd.TxID()] = failCount + 1
+	} else {
+		app.failedTxCounter[cmd.TxID()] = 0
+	}
+	go func(cmd types.MisesAppCmd) {
+		time.Sleep(2 * time.Second)
+		app.waitingCmds <- cmd
+	}(cmd)
+}
 func (app *MisesApp) startCmdRoutine() {
 	app.pendingCmds = make(chan types.MisesAppCmd, maxPendingCmds)
+	app.waitingCmds = make(chan types.MisesAppCmd, maxPendingCmds)
+	app.failedTxCounter = map[string]int{}
 	go func() {
 		for {
 
@@ -240,13 +295,42 @@ func (app *MisesApp) startCmdRoutine() {
 
 			err := app.RunSync(cmd)
 			if err != nil {
-				fmt.Printf("RegisterUser fail: %s\n", err.Error())
+				logger.Info("cmd fail: ", err.Error())
 				if app.listener != nil {
-					app.listener.OnFailed(cmd)
+					app.listener.OnFailed(cmd, err)
 				}
 			} else {
-				if app.listener != nil {
-					app.listener.OnSucceed(cmd)
+				if cmd.WaitTx() {
+					if app.listener != nil {
+						app.listener.OnSucceed(cmd)
+					}
+				} else {
+					app.asynWaitCmd(cmd, nil)
+				}
+
+			}
+
+		}
+	}()
+
+	go func() {
+		for {
+
+			cmd := <-app.waitingCmds
+
+			resTx, err := misesid.PollTx(app.clientCtx, cmd.TxID())
+			if err != nil {
+				app.asynWaitCmd(cmd, err)
+			} else {
+				delete(app.failedTxCounter, cmd.TxID())
+				if resTx.Height == 0 || resTx.TxResult.Code != 0 {
+					if app.listener != nil {
+						app.listener.OnFailed(cmd, fmt.Errorf("fail with code %d", resTx.TxResult.Code))
+					}
+				} else {
+					if app.listener != nil {
+						app.listener.OnSucceed(cmd)
+					}
 				}
 			}
 
@@ -256,27 +340,34 @@ func (app *MisesApp) startCmdRoutine() {
 
 func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 	//ensure did
-	if _, err := misesid.GetMisesID(app, cmd.MisesUID()); err != nil {
+	if err := misesid.CheckDid(app.clientCtx, cmd.MisesUID()); err != nil {
 		if cmd.PubKey() == "" {
 			return fmt.Errorf("no pubkey")
 		}
 
-		tx, err := misesid.CreateDid(app.clientCtx, cmd.PubKey(), cmd.MisesUID())
+		tx, err := misesid.CreateDid(app.clientCtx, app.seqChan, cmd.PubKey(), cmd.MisesUID())
 		if err != nil {
 			return err
 		}
-		err = misesid.PollTxSync(app.clientCtx, tx)
-		if err != nil {
-			return err
+		if app.listener != nil {
+			cmd.SetTxID(tx.TxHash)
+			app.listener.OnTxGenerated(cmd)
 		}
+		if cmd.WaitTx() {
+			err = misesid.PollTxSync(app.clientCtx, tx)
+			if err != nil {
+				return err
+			}
+		}
+
 	}
 
 	var tx *sdk.TxResponse = nil
 	var err error
 	if cmdapp, ok := cmd.(*RegisterUserCmd); ok {
-		tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
+		tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
 	} else if cmdapp, ok := cmd.(*FaucetCmd); ok {
-		tx, err = misesid.Transfer(app.clientCtx, app.MisesID(), cmdapp.MisesUID(), cmdapp.CoinUMIS())
+		tx, err = misesid.Transfer(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.CoinUMIS())
 	} else {
 		return fmt.Errorf("known cmd")
 	}
@@ -284,18 +375,24 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		return err
 	}
 
-	fmt.Printf("generated tx: %s\n", tx)
 	if app.listener != nil {
 		cmd.SetTxID(tx.TxHash)
 		app.listener.OnTxGenerated(cmd)
 	}
-	return misesid.PollTxSync(app.clientCtx, tx)
+	if cmd.WaitTx() {
+		err = misesid.PollTxSync(app.clientCtx, tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (app *MisesApp) RunAsync(cmd types.MisesAppCmd) error {
+func (app *MisesApp) RunAsync(cmd types.MisesAppCmd, wait bool) error {
 	if len(app.pendingCmds) == maxPendingCmds {
 		return fmt.Errorf("too many pending commands")
 	}
+	cmd.SetWaitTx(wait)
 	app.pendingCmds <- cmd
 
 	return nil
@@ -347,12 +444,12 @@ func (app *MisesApp) Signer() types.MSigner {
 
 func (app *MisesApp) NewRegisterUserCmd(uid string, pubkey string, feeGrantedPerDay int64) types.MisesAppCmd {
 	return &RegisterUserCmd{
-		MisesAppCmdBase{uid, pubkey, ""}, feeGrantedPerDay,
+		MisesAppCmdBase{uid, pubkey, "", true}, feeGrantedPerDay,
 	}
 }
 func (app *MisesApp) NewFaucetCmd(uid string, pubkey string, coinUMIS int64) types.MisesAppCmd {
 	return &FaucetCmd{
-		MisesAppCmdBase{uid, pubkey, ""}, coinUMIS,
+		MisesAppCmdBase{uid, pubkey, "", true}, coinUMIS,
 	}
 }
 

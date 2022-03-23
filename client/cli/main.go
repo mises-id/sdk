@@ -12,6 +12,7 @@ func main() {
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.LightCmd(),
+		cmd.KeysCmd(types.DefaultNodeHome),
 		cli.NewCompletionCmd(rootCmd, true),
 	)
 
