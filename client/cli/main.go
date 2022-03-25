@@ -1,6 +1,7 @@
 package main
 
 import (
+	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 	cmd "github.com/mises-id/sdk/client/cli/commands"
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
@@ -16,8 +17,8 @@ func main() {
 		cli.NewCompletionCmd(rootCmd, true),
 	)
 
-	cmd := cli.PrepareBaseCmd(rootCmd, "Mises", types.DefaultNodeHome)
-	if err := cmd.Execute(); err != nil {
+	//cmd := cli.PrepareBaseCmd(rootCmd, "Mises", types.DefaultNodeHome)
+	if err := svrcmd.Execute(rootCmd, types.DefaultNodeHome); err != nil {
 		panic(err)
 	}
 }

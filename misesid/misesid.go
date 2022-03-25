@@ -37,6 +37,7 @@ func SetConfig() {
 		config.SetBech32PrefixForAccount(AccountAddressPrefix, AccountPubKeyPrefix)
 		config.SetBech32PrefixForValidator(ValidatorAddressPrefix, ValidatorPubKeyPrefix)
 		config.SetBech32PrefixForConsensusNode(ConsNodeAddressPrefix, ConsNodePubKeyPrefix)
+		config.SetCoinType(60) // compatible with metamask
 		config.Seal()
 	}
 

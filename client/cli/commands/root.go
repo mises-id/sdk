@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/cosmos/cosmos-sdk/client"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
@@ -23,7 +24,7 @@ func init() {
 }
 
 func registerFlagsRootCmd(cmd *cobra.Command) {
-	cmd.PersistentFlags().String("log_level", config.LogLevel, "log level")
+	//cmd.PersistentFlags().String("log_level", config.LogLevel, "log level")
 }
 
 // ParseConfig retrieves the default environment configuration,
@@ -49,6 +50,12 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		config, err = ParseConfig()
 		if err != nil {
+			return err
+		}
+		initClientCtx := client.Context{}.WithInput(os.Stdin)
+
+		cmd.Context()
+		if err := client.SetCmdClientContext(cmd, initClientCtx); err != nil {
 			return err
 		}
 

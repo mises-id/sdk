@@ -191,10 +191,10 @@ type RegisterUserCallback struct {
 }
 
 func (cb *RegisterUserCallback) OnTxGenerated(cmd types.MisesAppCmd) {
-	fmt.Printf("OnTxGenerated %s\n", cmd.TxID())
+	fmt.Printf("OnTxGenerated  %s %s\n", cmd.MisesUID(), cmd.TxID())
 }
 func (cb *RegisterUserCallback) OnSucceed(cmd types.MisesAppCmd) {
-	fmt.Printf("OnSucceed %d %s\n", cb.successCount, cmd.TxID())
+	fmt.Printf("OnSucceed %d %s %s\n", cb.successCount, cmd.MisesUID(), cmd.TxID())
 	cb.successCount += 1
 	if cb.successCount == cb.maxCount {
 		cb.done <- true
@@ -209,6 +209,35 @@ func (cb *RegisterUserCallback) OnFailed(cmd types.MisesAppCmd, err error) {
 }
 func (cb *RegisterUserCallback) wait() {
 	<-cb.done
+}
+
+func TestHexDuplication(t *testing.T) {
+	mo := sdk.MSdkOption{
+		ChainID: "test",
+		Debug:   true,
+	}
+
+	appinfo := types.NewMisesAppInfoReadonly(
+		"Mises Discover",
+		"https://www.mises.site",
+		"https://home.mises.site",
+		[]string{"mises.site"},
+		"Mises Network",
+	)
+	_, app := sdk.NewSdkForApp(mo, appinfo)
+
+	callback := &RegisterUserCallback{}
+	callback.done = make(chan bool)
+	callback.maxCount = 1
+	app.SetListener(callback)
+
+	err := app.RunAsync(app.NewRegisterUserCmd("did:mises:mises1jprvqruscc6unxdyan9738s3qcxzgsykhx97me", "032e1cc6a8396a407c0c2c9586c16531f09ee727750db919bf116b28146f1c7454", 1000), false)
+	if err != nil {
+		fmt.Printf(err.Error())
+		return
+	}
+	callback.wait()
+
 }
 
 func BenchmarkSdkRegisterUserFlooding(t *testing.B) {
