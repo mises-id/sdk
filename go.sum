@@ -663,6 +663,8 @@ github.com/mises-id/tendermint v0.34.15-0.20220303055734-a5c89353c3e2 h1:Wf9LQN4
 github.com/mises-id/tendermint v0.34.15-0.20220303055734-a5c89353c3e2/go.mod h1:n0G22GynfeXTYbrn2IeLeB+oqsAe6R6jl4vZxZ1Y8F4=
 github.com/mises-id/tendermint v0.34.15-0.20220317102522-80f09a270501 h1:qoyJdnivrWpyVb/NLBFGYtvhRodxYNb460+8ry+s5+I=
 github.com/mises-id/tendermint v0.34.15-0.20220317102522-80f09a270501/go.mod h1:n0G22GynfeXTYbrn2IeLeB+oqsAe6R6jl4vZxZ1Y8F4=
+github.com/mises-id/tendermint v0.34.15-0.20220331082541-d269a1ad09b8 h1:1fYBGO9Ljw5y2Y8qeO57MQ1rsQgx+2Y34DvxWW/YUE4=
+github.com/mises-id/tendermint v0.34.15-0.20220331082541-d269a1ad09b8/go.mod h1:n0G22GynfeXTYbrn2IeLeB+oqsAe6R6jl4vZxZ1Y8F4=
 github.com/mises-id/tm-db v0.6.5-0.20210822095222-e1ff1e0dc734 h1:3cqNcdA/GpkZu+5e9XoQJYILiqGUXWVJ4luVCECBB9c=
 github.com/mises-id/tm-db v0.6.5-0.20210822095222-e1ff1e0dc734/go.mod h1:ZOy4GaBR9dW7Com3PfPRaVP75ktxRPXw9Lm72I78PZE=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
