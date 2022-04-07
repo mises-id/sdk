@@ -84,6 +84,8 @@ type MisesAppCmd interface {
 	PubKey() string
 	TxID() string
 	SetTxID(txid string)
+	TrackID() string
+	SetTrackID(trackerID string)
 
 	WaitTx() bool
 	SetWaitTx(wait bool)

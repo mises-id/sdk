@@ -64,6 +64,7 @@ type MisesAppCmdBase struct {
 	pubKey   string
 	txid     string
 	waitTx   bool
+	trackID  string
 }
 
 func (cmd *MisesAppCmdBase) MisesUID() string {
@@ -79,6 +80,14 @@ func (cmd *MisesAppCmdBase) TxID() string {
 
 func (cmd *MisesAppCmdBase) SetTxID(txid string) {
 	cmd.txid = txid
+}
+
+func (cmd *MisesAppCmdBase) TrackID() string {
+	return cmd.trackID
+}
+
+func (cmd *MisesAppCmdBase) SetTrackID(trackID string) {
+	cmd.trackID = trackID
 }
 
 func (cmd *MisesAppCmdBase) WaitTx() bool {
@@ -444,12 +453,12 @@ func (app *MisesApp) Signer() types.MSigner {
 
 func (app *MisesApp) NewRegisterUserCmd(uid string, pubkey string, feeGrantedPerDay int64) types.MisesAppCmd {
 	return &RegisterUserCmd{
-		MisesAppCmdBase{uid, pubkey, "", true}, feeGrantedPerDay,
+		MisesAppCmdBase{uid, pubkey, "", true, ""}, feeGrantedPerDay,
 	}
 }
 func (app *MisesApp) NewFaucetCmd(uid string, pubkey string, coinUMIS int64) types.MisesAppCmd {
 	return &FaucetCmd{
-		MisesAppCmdBase{uid, pubkey, "", true}, coinUMIS,
+		MisesAppCmdBase{uid, pubkey, "", true, ""}, coinUMIS,
 	}
 }
 
