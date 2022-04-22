@@ -196,14 +196,14 @@ func (cb *RegisterUserCallback) OnTxGenerated(cmd types.MisesAppCmd) {
 func (cb *RegisterUserCallback) OnSucceed(cmd types.MisesAppCmd) {
 	fmt.Printf("OnSucceed %d %s %s\n", cb.successCount, cmd.MisesUID(), cmd.TxID())
 	cb.successCount += 1
-	if cb.successCount == cb.maxCount {
+	if cb.successCount+cb.failCount == cb.maxCount {
 		cb.done <- true
 	}
 }
 func (cb *RegisterUserCallback) OnFailed(cmd types.MisesAppCmd, err error) {
-	fmt.Printf("OnFailed %s\n", cmd.TxID())
+	fmt.Printf("OnFailed %s, %s\n", cmd.TxID(), err)
 	cb.failCount += 1
-	if cb.failCount > 10 {
+	if cb.successCount+cb.failCount == cb.maxCount {
 		cb.done <- true
 	}
 }
@@ -282,7 +282,7 @@ func (cb *FaucetCallback) OnSucceed(cmd types.MisesAppCmd) {
 	fmt.Printf("OnSucceed\n")
 }
 func (cb *FaucetCallback) OnFailed(cmd types.MisesAppCmd, err error) {
-	fmt.Printf("OnFailed\n")
+	fmt.Printf("OnFailed %s\n", err)
 }
 
 func TestSdkFaucet(t *testing.T) {

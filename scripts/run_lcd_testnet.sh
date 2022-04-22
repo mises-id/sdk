@@ -1,0 +1,1 @@
+./mises-service light test --log-level trace --listening-address  tcp://0.0.0.0:26657 --primary-addr http://mises.ihuaj.com:26657 --witness-addr  http://mises.ihuaj.com:26657 --trusted-height 413202 --trusted-hash D0E1F3F74C1E27B501F1A6963F24997622058DF142CDA8ED34782D74B74EAB28 --trace

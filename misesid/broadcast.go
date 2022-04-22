@@ -271,14 +271,19 @@ func postBroadcastTx(clientCtx client.Context, seqChan *SeqChan, res *sdk.TxResp
 		seqChan.SeqCmdChan <- 1
 		return nil, err
 	}
-
-	if res == nil || res.Code == sdkerrors.ErrWrongSequence.ABCICode() || res.Code == sdkerrors.ErrInvalidSequence.ABCICode() {
-		//reset cmdSeqChan
+	if res == nil {
 		seqChan.SeqCmdChan <- 1
-	} else {
-		seqChan.SeqCmdChan <- 0
+		return nil, fmt.Errorf("broadcast failed with nil response")
 	}
 
+	if res.Code != 0 {
+		if res.Code == sdkerrors.ErrWrongSequence.ABCICode() || res.Code == sdkerrors.ErrInvalidSequence.ABCICode() {
+			//reset cmdSeqChan
+			seqChan.SeqCmdChan <- 1
+		}
+		return nil, fmt.Errorf("broadcast failed with code %d, tx %s", res.Code, res.TxHash)
+	}
+	seqChan.SeqCmdChan <- 0
 	return res, nil
 }
 
