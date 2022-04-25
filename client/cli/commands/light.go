@@ -255,6 +255,19 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	if err := p.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		logger.Error("proxy ListenAndServe", "err", err)
+		if p.Listener != nil {
+			logger.Error("proxy close listener")
+			p.Listener.Close()
+		}
+		if p.Client != nil && p.Client.IsRunning() {
+			err = p.Client.Stop()
+			if err != nil {
+				logger.Error("proxy stop client", err)
+			} else {
+				logger.Error("proxy stop client")
+			}
+
+		}
 	}
 
 	return nil
