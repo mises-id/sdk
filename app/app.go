@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -32,7 +33,9 @@ import (
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -162,7 +165,7 @@ func (app *MisesApp) AddAuth(misesId string, permissions []string) {
 	app.auths = append(app.auths, auth)
 }
 
-func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string) error {
+func (app *MisesApp) Init(info types.MAppInfo, options types.MSdkOption) error {
 	misesid.SetConfig()
 	clientCtx := client.Context{}
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
@@ -170,6 +173,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 	authcodec.RegisterInterfaces(interfaceRegistry)
 	bankcodec.RegisterInterfaces(interfaceRegistry)
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
+	misestypes.RegisterInterfaces(interfaceRegistry)
 
 	codec := codec.NewProtoCodec(interfaceRegistry)
 	txCfg := tx.NewTxConfig(codec, tx.DefaultSignModes)
@@ -179,9 +183,9 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 		WithCodec(codec).
 		WithInterfaceRegistry(interfaceRegistry).
 		WithTxConfig(txCfg).
-		WithInput(&PassReader{Pass: passPhrase}).
+		WithInput(&PassReader{Pass: options.PassPhrase}).
 		WithKeyringDir(types.NodeHome + "/sdk-keyring").
-		WithChainID(chainID)
+		WithChainID(options.ChainID)
 	kr, err := client.NewKeyringFromBackend(clientCtx, keyring.BackendFile)
 	if err != nil {
 		return err
@@ -195,7 +199,7 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 			return err
 		}
 		logger.Info("app mnemonics is: ", mnemonics)
-		key, err = kr.NewAccount(appKey, mnemonics, passPhrase, "", hd.Secp256k1)
+		key, err = kr.NewAccount(appKey, mnemonics, options.PassPhrase, "", hd.Secp256k1)
 		if err != nil {
 			return err
 		}
@@ -203,11 +207,9 @@ func (app *MisesApp) Init(info types.MAppInfo, chainID string, passPhrase string
 
 	}
 
-	rpcURI := "tcp://127.0.0.1:26657"
+	clientCtx = clientCtx.WithNodeURI(options.RpcURI)
 
-	clientCtx = clientCtx.WithNodeURI(rpcURI)
-
-	client, err := client.NewClientFromNode(rpcURI)
+	client, err := client.NewClientFromNode(options.RpcURI)
 	if err != nil {
 		return err
 	}
@@ -464,4 +466,100 @@ func (app *MisesApp) NewFaucetCmd(uid string, pubkey string, coinUMIS int64) typ
 
 func (app *MisesApp) SetListener(listener types.MisesAppCmdListener) {
 	app.listener = listener
+}
+
+func (app *MisesApp) StartEventStreaming(listener types.MisesEventStreamingListener) error {
+	clientCtx := app.clientCtx
+	var err error
+	if !clientCtx.Client.IsRunning() {
+		err = clientCtx.Client.Start()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = clientCtx.Client.UnsubscribeAll(context.Background(), app.appDid)
+	if err != nil {
+		return err
+	}
+
+	newBlockChan, err := clientCtx.Client.Subscribe(
+		context.Background(),
+		app.appDid,
+		"tm.event = 'NewBlockHeader'",
+		1,
+	)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for event := range newBlockChan {
+			if newBlockHeaderEvent, ok := event.Data.(tmtypes.EventDataNewBlockHeader); ok {
+				listener.OnNewBlockHeaderEvent(&newBlockHeaderEvent)
+			}
+		}
+
+		listener.OnEventStreamingTerminated()
+
+	}()
+
+	txChan, err := clientCtx.Client.Subscribe(
+		context.Background(),
+		app.appDid,
+		"tm.event = 'Tx'",
+		1,
+	)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for event := range txChan {
+			if txEvent, ok := event.Data.(tmtypes.EventDataTx); ok {
+
+				listener.OnTxEvent(&txEvent)
+			}
+		}
+
+		listener.OnEventStreamingTerminated()
+
+	}()
+
+	return nil
+}
+
+type intoAny interface {
+	AsAny() *codectypes.Any
+}
+
+func (app *MisesApp) ParseEvent(header *tmtypes.EventDataNewBlockHeader, tx *tmtypes.EventDataTx) (*sdk.TxResponse, error) {
+	clientCtx := app.clientCtx
+	txb, err := clientCtx.TxConfig.TxDecoder()(tx.Tx)
+	if err != nil {
+		return nil, err
+	}
+	p, ok := txb.(intoAny)
+	if !ok {
+		return nil, fmt.Errorf("expecting a type implementing intoAny, got: %T", txb)
+	}
+	anyTx := p.AsAny()
+
+	parsedLogs, _ := sdk.ParseABCILogs(tx.Result.Log)
+
+	return &sdk.TxResponse{
+		TxHash:    bytes.HexBytes(tmtypes.Tx(tx.Tx).Hash()).String(),
+		Height:    header.Header.Height,
+		Codespace: tx.Result.Codespace,
+		Code:      tx.Result.Code,
+		Data:      strings.ToUpper(hex.EncodeToString(tx.Result.Data)),
+		RawLog:    tx.Result.Log,
+		Logs:      parsedLogs,
+		Info:      tx.Result.Info,
+		GasWanted: tx.Result.GasWanted,
+		GasUsed:   tx.Result.GasUsed,
+		Tx:        anyTx,
+		Timestamp: header.Header.Time.Format(time.RFC3339),
+		Events:    tx.Result.Events,
+	}, nil
 }

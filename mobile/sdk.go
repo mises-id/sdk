@@ -65,8 +65,9 @@ func (w *mSdkWrapper) SetTestEndpoint(endpoint string) error {
 }
 
 func NewMSdk() MSdk {
-	opt := sdk.MSdkOption{}
-	ret := sdk.NewSdkForUser(opt, "")
+	opt := types.MSdkOption{}
+	opt.PassPhrase = ""
+	ret := sdk.NewSdkForUser(opt)
 	return &mSdkWrapper{ret}
 }
 

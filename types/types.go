@@ -3,6 +3,9 @@ package types
 import (
 	"os"
 	"path/filepath"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -22,8 +25,9 @@ func init() {
 
 const (
 	DefaultEndpoint       string = "http://localhost:1317/"
-	DefaultChainID        string = "mises"
+	DefaultChainID        string = "mainnet"
 	DefaultPassPhrase     string = "mises.site"
+	DefaultRpcURI         string = "tcp://127.0.0.1:26657"
 	AddressPrefix         string = "mises"
 	MisesIDPrefix                = "did:mises:"
 	MisesAppIDPrefix             = "did:misesapp:"
@@ -32,6 +36,13 @@ const (
 	ErrorValueIsRequired  string = "Value is required"
 	ErrorKeyFormat        string = "Key format error"
 )
+
+type MSdkOption struct {
+	ChainID    string //'mainnet' for the mainnet
+	PassPhrase string //8 chars needed, default is 'mises.site'
+	Debug      bool
+	RpcURI     string
+}
 
 type MSdk interface {
 	UserMgr() MUserMgr
@@ -97,11 +108,17 @@ type MisesAppCmdListener interface {
 	OnFailed(cmd MisesAppCmd, err error)
 }
 
+type MisesEventStreamingListener interface {
+	OnTxEvent(*tmtypes.EventDataTx)
+	OnNewBlockHeaderEvent(*tmtypes.EventDataNewBlockHeader)
+	OnEventStreamingTerminated()
+}
+
 type MApp interface {
 	MisesID() string //did:misesapp:0123456789abcdef
 	Info() MAppInfo
 
-	Init(info MAppInfo, chainID string, passPhrase string) error
+	Init(info MAppInfo, options MSdkOption) error
 
 	SetListener(listener MisesAppCmdListener)
 
@@ -115,6 +132,9 @@ type MApp interface {
 
 	NewRegisterUserCmd(uid string, pubkey string, feeGrantedPerDay int64) MisesAppCmd
 	NewFaucetCmd(uid string, pubkey string, coin int64) MisesAppCmd
+
+	StartEventStreaming(listener MisesEventStreamingListener) error
+	ParseEvent(header *tmtypes.EventDataNewBlockHeader, tx *tmtypes.EventDataTx) (*sdk.TxResponse, error)
 }
 
 type MAppInfo interface {
@@ -125,59 +145,6 @@ type MAppInfo interface {
 	Developer() string
 }
 
-/*
-type MUserAuthorization interface {
-	UserDid() string       //mises app did
-	AppDid() string        //to
-	Permissions() []string //user_info_r,  user_info_w, user_relation_r, user_relation_w
-	ExpireTimestamp() int  //
-	AppAuthorization() MAppAuth
-}
-
-type MAppInfo interface {
-	ApppDid() string //did:mises:0123456789abcdef
-	AppName() string //
-	IconDid() string //udid of icon file did:mises:0123456789abcdef/icon
-	IconThumb() []byte
-	Domain() string //app
-	Developer() string
-}
-
-type MAppAuth interface {
-	AppInfo() MAppInfo
-	MisesId()
-	Permissions() []string //
-	ExpireTimestamp() int  //
-}
-
-type MAppMgr interface {
-	AddApp(app MAppAuth, removable bool) (MApp, error)
-	ListApps() ([]MApp, error)
-	RemoveApp(appDid string) error
-}
-
-type MEvent interface {
-	EventID() int
-}
-type MEventCallback func(event MEvent) error
-
-type MApp interface {
-	AppDID() (string, error)
-	AppDomain() string
-	SetAppDomain(string)
-	IsRegistered() (bool, error)
-	Register(MAppInfo string, appDid string) error
-	AddAuth(misesid string, permission []string) (MAppAuth, error)
-	//	GenerateAuthorization(permisions []string) (MAppAuthorization, error)
-
-	AddEventListener(userDid string, userAuth MUserAuthorization, callback MEventCallback)
-	RemoveUserEventListener(userDid string, userAuth MUserAuthorization, callback MEventCallback) error
-	ListFollow(whomDid string) (dids []string)
-	Commit() error
-	Cancel() error
-	Agent() (MAgent, error)
-}
-*/
 type MPublicKey interface {
 	KeyDid() string       // key did "did:mises:123456789abcdefghi#keys-1"
 	KeyType() string      //Ed25519VerificationKey2020

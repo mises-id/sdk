@@ -2,6 +2,7 @@ package sdk_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/mises-id/sdk"
@@ -9,7 +10,12 @@ import (
 	"github.com/mises-id/sdk/misesid"
 	"github.com/mises-id/sdk/types"
 	"github.com/mises-id/sdk/user"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"github.com/tyler-smith/assert"
+)
+
+const (
+	SimplePassWord = "12345678"
 )
 
 func CreateRandomUser() types.MUser {
@@ -20,20 +26,26 @@ func CreateRandomUser() types.MUser {
 
 	var ugr user.MisesUserMgr
 	pUgr := &ugr
-	cuser, _ := pUgr.CreateUser(mnemonics, "123456")
+	cuser, _ := pUgr.CreateUser(mnemonics, SimplePassWord)
 
 	return cuser
+}
+func TestMain(m *testing.M) {
+	// call flag.Parse() here if TestMain uses flags
+	types.NodeHome = "test.misestm"
+	os.Exit(m.Run())
 }
 
 func TestSdkNewForUesr(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
-	mo := sdk.MSdkOption{
-		ChainID: "test",
-		Debug:   true,
+	mo := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: SimplePassWord,
 	}
 
 	// test NewSdkForUser
-	s := sdk.NewSdkForUser(mo, "123456")
+	s := sdk.NewSdkForUser(mo)
 
 	ugr := s.UserMgr()
 
@@ -42,7 +54,7 @@ func TestSdkNewForUesr(t *testing.T) {
 	assert.NoError(t, err)
 	fmt.Printf("mnemonics is: %s\n", mnemonics)
 
-	newUser, err := ugr.CreateUser(mnemonics, "123456")
+	newUser, err := ugr.CreateUser(mnemonics, SimplePassWord)
 	assert.NoError(t, err)
 
 	// fmt.Printf("keystore version is: %d\n", misesid.Ks.Version)
@@ -104,9 +116,10 @@ func TestSdkNewForUesr(t *testing.T) {
 
 func TestSdkVerifyLogin(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
-	mo := sdk.MSdkOption{
-		ChainID: "test",
-		Debug:   true,
+	mo := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: SimplePassWord,
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(
@@ -127,13 +140,14 @@ func TestSdkVerifyLogin(t *testing.T) {
 
 func TestSdkActiveUesr(t *testing.T) {
 	misesid.DeleteKeyStoreFile()
-	mo := sdk.MSdkOption{
-		ChainID: "test",
-		Debug:   true,
+	mo := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: SimplePassWord,
 	}
 
 	// test NewSdkForUser
-	s := sdk.NewSdkForUser(mo, "123456")
+	s := sdk.NewSdkForUser(mo)
 
 	ugr := s.UserMgr()
 
@@ -143,18 +157,24 @@ func TestSdkActiveUesr(t *testing.T) {
 	assert.NoError(t, err)
 	fmt.Printf("mnemonics is: %s\n", mnemonics)
 
-	newUser, err := ugr.CreateUser(mnemonics, "123456")
+	newUser, err := ugr.CreateUser(mnemonics, SimplePassWord)
 	assert.NoError(t, err)
 
 	u = ugr.ActiveUser()
 	assert.True(t, u.MisesID() == newUser.MisesID())
 
-	s = sdk.NewSdkForUser(mo, "123456")
+	s = sdk.NewSdkForUser(mo)
 	ugr = s.UserMgr()
 	u = ugr.ActiveUser()
 	assert.NotNil(t, u)
 
-	s = sdk.NewSdkForUser(mo, "")
+	mo1 := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: "",
+	}
+
+	s = sdk.NewSdkForUser(mo1)
 	ugr = s.UserMgr()
 	u = ugr.ActiveUser()
 	assert.Nil(t, u)
@@ -162,9 +182,10 @@ func TestSdkActiveUesr(t *testing.T) {
 }
 
 func TestSdkRegisterUser(t *testing.T) {
-	mo := sdk.MSdkOption{
-		ChainID: "test",
-		Debug:   true,
+	mo := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: SimplePassWord,
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(
@@ -212,9 +233,10 @@ func (cb *RegisterUserCallback) wait() {
 }
 
 func TestHexDuplication(t *testing.T) {
-	mo := sdk.MSdkOption{
-		ChainID: "test",
-		Debug:   true,
+	mo := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: SimplePassWord,
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(
@@ -241,9 +263,10 @@ func TestHexDuplication(t *testing.T) {
 }
 
 func BenchmarkSdkRegisterUserFlooding(t *testing.B) {
-	mo := sdk.MSdkOption{
-		ChainID: "test",
-		Debug:   true,
+	mo := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: SimplePassWord,
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(
@@ -286,10 +309,10 @@ func (cb *FaucetCallback) OnFailed(cmd types.MisesAppCmd, err error) {
 }
 
 func TestSdkFaucet(t *testing.T) {
-	mo := sdk.MSdkOption{
+	mo := types.MSdkOption{
 		ChainID:    "test",
 		Debug:      true,
-		PassPhrase: "mises.site",
+		PassPhrase: SimplePassWord,
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(
@@ -306,5 +329,72 @@ func TestSdkFaucet(t *testing.T) {
 
 	err := app.RunSync(app.NewFaucetCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100))
 	assert.NoError(t, err)
+
+}
+
+type EventStreamingCallback struct {
+	done       chan bool
+	eventCount int
+	maxCount   int
+	header     *tmtypes.EventDataNewBlockHeader
+	tx         *tmtypes.EventDataTx
+}
+
+func (cb *EventStreamingCallback) OnTxEvent(t *tmtypes.EventDataTx) {
+	fmt.Printf("OnTxEvent\n")
+	cb.eventCount++
+	cb.tx = t
+	if cb.eventCount > cb.maxCount || (cb.tx != nil && cb.header != nil) {
+		cb.done <- true
+	}
+}
+func (cb *EventStreamingCallback) OnNewBlockHeaderEvent(h *tmtypes.EventDataNewBlockHeader) {
+	fmt.Printf("OnNewBlockHeaderEvent\n")
+	cb.eventCount++
+	cb.header = h
+	if cb.eventCount > cb.maxCount || (cb.tx != nil && cb.header != nil) {
+		cb.done <- true
+	}
+}
+func (cb *EventStreamingCallback) OnEventStreamingTerminated() {
+	fmt.Printf("OnEventStreamingTerminated")
+	cb.done <- true
+}
+func (cb *EventStreamingCallback) wait() {
+	<-cb.done
+}
+
+func TestSdkEventStreaming(t *testing.T) {
+	mo := types.MSdkOption{
+		ChainID:    "test",
+		Debug:      true,
+		PassPhrase: SimplePassWord,
+		RpcURI:     "http://mises.ihuaj.com:26657",
+	}
+
+	appinfo := types.NewMisesAppInfoReadonly(
+		"Mises Faucet",
+		"https://www.mises.site",
+		"https://home.mises.site",
+		[]string{"mises.site"},
+		"Mises Network",
+	)
+	_, app := sdk.NewSdkForApp(mo, appinfo)
+
+	callback := &EventStreamingCallback{}
+	callback.done = make(chan bool)
+	callback.maxCount = 10
+
+	err := app.StartEventStreaming(callback)
+	assert.NoError(t, err)
+	newUser := CreateRandomUser()
+
+	err = app.RunAsync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 1000), false)
+	assert.NoError(t, err)
+	callback.wait()
+
+	resp, err := app.ParseEvent(callback.header, callback.tx)
+	assert.NoError(t, err)
+	fmt.Printf("ParseEvent %s", resp.TxHash)
 
 }

@@ -14,14 +14,8 @@ import (
 
 var _ types.MSdk = &misesSdk{}
 
-type MSdkOption struct {
-	ChainID    string //'mises' for the mainnet
-	PassPhrase string //8 chars needed, default is 'mises.site'
-	Debug      bool
-}
-
 type misesSdk struct {
-	options MSdkOption
+	options types.MSdkOption
 	userMgr types.MUserMgr
 	app     types.MApp
 }
@@ -29,24 +23,27 @@ type misesSdk struct {
 func (ctx *misesSdk) setupLogger() {
 }
 
-func NewSdkForUser(options MSdkOption, passPhrase string) types.MSdk {
+func NewSdkForUser(options types.MSdkOption) types.MSdk {
 	if options.ChainID == "" {
 		options.ChainID = types.DefaultChainID
 	}
 
 	var ctx misesSdk
 	ctx.options = options
-	ctx.userMgr = MSdkInitUserMgr(passPhrase)
+	ctx.userMgr = MSdkInitUserMgr(options.PassPhrase)
 
 	return &ctx
 }
 
-func NewSdkForApp(options MSdkOption, info types.MAppInfo) (types.MSdk, types.MApp) {
+func NewSdkForApp(options types.MSdkOption, info types.MAppInfo) (types.MSdk, types.MApp) {
 	if options.ChainID == "" {
 		options.ChainID = types.DefaultChainID
 	}
 	if options.PassPhrase == "" {
 		options.PassPhrase = types.DefaultPassPhrase
+	}
+	if options.RpcURI == "" {
+		options.RpcURI = types.DefaultRpcURI
 	}
 
 	var ctx misesSdk
@@ -78,7 +75,7 @@ func MSdkInitUserMgr(passPhrase string) types.MUserMgr {
 func (sdk *misesSdk) EnsureApp(info types.MAppInfo) (types.MApp, error) {
 
 	var app app.MisesApp
-	if err := app.Init(info, sdk.options.ChainID, sdk.options.PassPhrase); err != nil {
+	if err := app.Init(info, sdk.options); err != nil {
 		return nil, err
 	}
 	return &app, nil
