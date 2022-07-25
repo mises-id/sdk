@@ -7,7 +7,7 @@ import (
 
 	tmcfg "github.com/tendermint/tendermint/config"
 
-	"github.com/mises-id/sdk/client/cli/commands"
+	"github.com/mises-id/sdk/client/cli/commands/light"
 	"github.com/mises-id/sdk/types"
 )
 
@@ -89,7 +89,7 @@ func (lcd *mLCD) Serve(listen string) error {
 
 	ctx := context.Background()
 	// ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
-	cmd := commands.LightCmd()
+	cmd := light.LightCmd()
 	args := []string{
 		lcd.chainId,
 		"--listening-address=" + listen,

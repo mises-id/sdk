@@ -7,5 +7,6 @@
 ### 
 export GO111MODULE=auto
 export GOMOD=auto
+export CGO_ENABLED=0
 go env -w GO111MODULE=auto
-gomobile bind -v  -o sdk.aar -target=ios ./mobile/lcd
+gomobile bind -v  -o sdk.xcframework -target=ios ./mobile/lcd

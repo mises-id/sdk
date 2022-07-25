@@ -1,4 +1,4 @@
-package commands
+package light
 
 import (
 	"context"
@@ -49,6 +49,7 @@ const (
 var (
 	primaryKey   = []byte("primary")
 	witnessesKey = []byte("witnesses")
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "light")
 )
 
 func LightCmd() *cobra.Command {
@@ -106,7 +107,6 @@ func clearProxy(p *lproxy.Proxy) {
 
 func runProxy(cmd *cobra.Command, args []string) error {
 	// Initialize logger.
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	var option log.Option
 	logLevel, _ := cmd.Flags().GetString(logLevelOpt)
 	if logLevel == "info" {
