@@ -22,6 +22,7 @@ import (
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	dbm "github.com/tendermint/tm-db"
 	_ "github.com/tendermint/tm-db/metadb"
 )
@@ -34,6 +35,7 @@ const (
 	witnessAddrsJoinedOpt = "witness-addr"
 	dirOpt                = "dir"
 	maxOpenConnectionsOpt = "max-open-connections"
+	insecureSslOpt        = "insecure-ssl"
 
 	sequentialOpt     = "sequential-verification"
 	trustingPeriodOpt = "trust-period"
@@ -79,8 +81,27 @@ only the chainID is required.
 	cmd.Flags().String(logLevelOpt, "info", "Log level, info or debug (Default: info) ")
 	cmd.Flags().String(trustLevelOpt, "1/3", "trust level. Must be between 1/3 and 3/3")
 	cmd.Flags().Bool(sequentialOpt, false, "sequential verification. Verify all headers sequentially as opposed to using skipping verification")
+	cmd.Flags().Bool(insecureSslOpt, false, "insecure skip ssl verification for android device below 7.1.1")
 
 	return cmd
+}
+
+func clearProxy(p *lproxy.Proxy) {
+	if p.Listener != nil {
+		logger.Error("proxy close listener")
+		err := p.Listener.Close()
+		if err != nil {
+			logger.Error("proxy close listener fail", err)
+		}
+	}
+	if p.Client != nil && p.Client.IsRunning() {
+		logger.Error("proxy stop client")
+		err := p.Client.Stop()
+		if err != nil {
+			logger.Error("proxy stop client fail", err)
+		}
+
+	}
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
@@ -151,25 +172,20 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		light.ConfirmationFunction(func(action string) bool {
 			fmt.Println(action)
 			return true
-			// scanner := bufio.NewScanner(os.Stdin)
-			// for {
-			// 	scanner.Scan()
-			// 	response := scanner.Text()
-			// 	switch response {
-			// 	case "y", "Y":
-			// 		return true
-			// 	case "n", "N":
-			// 		return false
-			// 	default:
-			// 		fmt.Println("please input 'Y' or 'n' and press ENTER")
-			// 	}
-			// }
 		}),
 	}
 
 	sequential, err := cmd.Flags().GetBool(sequentialOpt)
 	if err != nil {
 		return err
+	}
+
+	insecureSsl, err := cmd.Flags().GetBool(insecureSslOpt)
+	if err != nil {
+		return err
+	}
+	if insecureSsl {
+		rpctypes.ForceTrustIsrgRootX1()
 	}
 
 	if sequential {
@@ -248,26 +264,14 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
-		p.Listener.Close()
 	})
 
 	logger.Info("Starting proxy...", "laddr", listenAddr)
 	if err := p.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		logger.Error("proxy ListenAndServe", "err", err)
-		if p.Listener != nil {
-			logger.Error("proxy close listener")
-			p.Listener.Close()
-		}
-		if p.Client != nil && p.Client.IsRunning() {
-			err = p.Client.Stop()
-			if err != nil {
-				logger.Error("proxy stop client", err)
-			} else {
-				logger.Error("proxy stop client")
-			}
+		clearProxy(p)
 
-		}
 	}
 
 	return nil

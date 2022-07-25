@@ -19,6 +19,7 @@ type mLCD struct {
 	witnessAddresses string
 	trustHeight      string
 	trustHash        string
+	insecureSsl      bool
 }
 
 func (lcd *mLCD) SetChainID(chainId string) error {
@@ -33,6 +34,11 @@ func (lcd *mLCD) SetEndpoints(primary string, witnesses string) error {
 func (lcd *mLCD) SetTrust(height string, hash string) error {
 	lcd.trustHeight = height
 	lcd.trustHash = hash
+	return nil
+}
+
+func (lcd *mLCD) SetInsecureSsl(insecureSsl bool) error {
+	lcd.insecureSsl = insecureSsl
 	return nil
 }
 
@@ -95,6 +101,9 @@ func (lcd *mLCD) Serve(listen string) error {
 	if lcd.trustHeight != "" && lcd.trustHash != "" {
 		args = append(args, "--trusted-height="+lcd.trustHeight)
 		args = append(args, "--trusted-hash="+lcd.trustHash)
+	}
+	if lcd.insecureSsl {
+		args = append(args, "--insecure-ssl")
 	}
 	cmd.SetArgs(args)
 
