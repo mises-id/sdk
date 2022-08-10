@@ -1,11 +1,18 @@
 package lcd
 
 import (
-	"context"
+	"encoding/hex"
 	"fmt"
+	"net/http"
 	"os"
+	"runtime"
+	"strconv"
+	"sync/atomic"
+	"time"
 
 	tmcfg "github.com/tendermint/tendermint/config"
+
+	lproxy "github.com/tendermint/tendermint/light/proxy"
 
 	"github.com/mises-id/sdk/client/cli/commands/light"
 	"github.com/mises-id/sdk/types"
@@ -20,6 +27,9 @@ type mLCD struct {
 	trustHeight      string
 	trustHash        string
 	insecureSsl      bool
+	initThreadID     uint64
+	proxy            *lproxy.Proxy
+	restarting       uint32 // atomic
 }
 
 func (lcd *mLCD) SetChainID(chainId string) error {
@@ -42,79 +52,85 @@ func (lcd *mLCD) SetInsecureSsl(insecureSsl bool) error {
 	return nil
 }
 
-// func (lcd *mLCD) ServeRestApi(listen string) error {
-// 	_, err := CreateDefaultTendermintConfig(types.NodeHome)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	interfaceRegistry := costypes.NewInterfaceRegistry()
-// 	codec := codec.NewProtoCodec(interfaceRegistry)
-// 	txCfg := tx.NewTxConfig(codec, tx.DefaultSignModes)
-// 	clientCtx := client.Context{}.
-// 		WithCodec(codec).
-// 		WithHomeDir(types.NodeHome).
-// 		WithTxConfig(txCfg).
-// 		WithAccountRetriever(auth.AccountRetriever{}).
-// 		WithInput(sdkrest.KeyringPass).
-// 		WithKeyringDir("keyring")
-
-// 	ctx := context.Background()
-// 	ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
-// 	cmd := misescmd.RestCmd()
-// 	cmd.SetArgs([]string{
-// 		"--chain-id=" + lcd.chainId,
-// 		"--listening-address=" + listen,
-// 		"--log-level=trace",
-// 	})
-
-// 	err = cmd.ExecuteContext(ctx)
-// 	return err
-// }
-
-func (lcd *mLCD) Serve(listen string) error {
+func (lcd *mLCD) serveImpl(listen string) error {
 	_, err := CreateDefaultTendermintConfig(types.NodeHome)
 	if err != nil {
 		return err
 	}
 
-	// interfaceRegistry := costypes.NewInterfaceRegistry()
-	// codec := codec.NewProtoCodec(interfaceRegistry)
-	// txCfg := tx.NewTxConfig(codec, tx.DefaultSignModes)
-	// clientCtx := client.Context{}.
-	// 	WithCodec(codec).
-	// 	WithHomeDir(types.NodeHome).
-	// 	WithTxConfig(txCfg).
-	// 	WithAccountRetriever(auth.AccountRetriever{})
+	trustHeight, err := strconv.ParseInt(lcd.trustHeight, 10, 64)
+	if err != nil {
+		trustHeight = 0
+	}
+	trustHash, err := hex.DecodeString(lcd.trustHash)
+	if err != nil {
+		trustHash = []byte{}
+	}
 
-	ctx := context.Background()
-	// ctx = context.WithValue(ctx, client.ClientContextKey, &clientCtx)
-	cmd := light.LightCmd()
-	args := []string{
-		lcd.chainId,
-		"--listening-address=" + listen,
-		"--log-level=trace",
-		"--primary-addr=" + lcd.primaryAddress,   //http://e1.mises.site:26657
-		"--witness-addr=" + lcd.witnessAddresses, //http://e2.mises.site:26657
-		"--dir=" + types.NodeHome + "/light",
+	config := light.ProxyConfig{
+		LogLevel:           "trace",
+		ChainID:            lcd.chainId,
+		WitnessAddrsJoined: lcd.witnessAddresses,
+		Dir:                types.NodeHome + "/light",
+		PrimaryAddr:        lcd.primaryAddress,
+		TrustLevel:         "1/3",
+		Sequential:         false,
+		InsecureSsl:        lcd.insecureSsl,
+		TrustedHeight:      trustHeight,
+		TrustedHash:        trustHash,
+		TrustingPeriod:     168 * time.Hour,
+		MaxOpenConnections: 900,
+		ListenAddr:         listen,
 	}
-	if lcd.trustHeight != "" && lcd.trustHash != "" {
-		args = append(args, "--trusted-height="+lcd.trustHeight)
-		args = append(args, "--trusted-hash="+lcd.trustHash)
-	}
-	if lcd.insecureSsl {
-		args = append(args, "--insecure-ssl")
-	}
-	cmd.SetArgs(args)
 
-	err = cmd.ExecuteContext(ctx)
-	return err
+	p, err := light.CreateProxy(&config)
+	if err != nil {
+		return err
+	}
+	lcd.proxy = p
+	atomic.StoreUint32(&lcd.restarting, 0)
+
+	if err := p.ListenAndServe(); err != http.ErrServerClosed {
+		light.ClearProxy(p)
+	}
+
+	return nil
+}
+
+func (lcd *mLCD) Serve(listen string, delegator MLightNodeDelegator) error {
+
+	go func() {
+		for {
+			lcd.serveImpl(listen)
+			lcd.proxy = nil
+			if atomic.LoadUint32(&lcd.restarting) == 1 {
+				//restarting
+				time.Sleep(5 * time.Second)
+			} else {
+				delegator.OnError()
+				break
+			}
+		}
+	}()
+
+	return nil
+
 }
 
 func (lcd *mLCD) SetLogLevel(level int) error {
 	return nil
 }
 
+func (lcd *mLCD) Restart() error {
+	if atomic.CompareAndSwapUint32(&lcd.restarting, 0, 1) {
+		proxy := lcd.proxy
+		if proxy != nil {
+			light.ClearProxy(proxy)
+		}
+
+	}
+	return nil
+}
 func CreateDefaultTendermintConfig(rootDir string) (*tmcfg.Config, error) {
 	conf := tmcfg.DefaultConfig()
 	conf.SetRoot(rootDir)
@@ -128,7 +144,9 @@ func CreateDefaultTendermintConfig(rootDir string) (*tmcfg.Config, error) {
 }
 
 func NewMLightNode() MLightNode {
-	return &mLCD{}
+	lcd := &mLCD{}
+	runtime.LockOSThread()
+	return lcd
 }
 
 func SetHomePath(dir string) error {

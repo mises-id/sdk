@@ -49,7 +49,7 @@ const (
 var (
 	primaryKey   = []byte("primary")
 	witnessesKey = []byte("witnesses")
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "light")
+	logger       = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "light")
 )
 
 func LightCmd() *cobra.Command {
@@ -87,7 +87,7 @@ only the chainID is required.
 	return cmd
 }
 
-func clearProxy(p *lproxy.Proxy) {
+func ClearProxy(p *lproxy.Proxy) {
 	if p.Listener != nil {
 		logger.Error("proxy close listener")
 		err := p.Listener.Close()
@@ -105,66 +105,72 @@ func clearProxy(p *lproxy.Proxy) {
 	}
 }
 
-func runProxy(cmd *cobra.Command, args []string) error {
-	// Initialize logger.
+type ProxyConfig struct {
+	PrimaryAddr        string
+	WitnessAddrsJoined string
+	LogLevel           string
+	ChainID            string
+	Dir                string
+	TrustLevel         string
+	TrustedHeight      int64
+	TrustedHash        []byte
+	TrustingPeriod     time.Duration
+	MaxOpenConnections int
+	ListenAddr         string
+
+	Sequential  bool
+	InsecureSsl bool
+}
+
+func CreateProxy(config *ProxyConfig) (*lproxy.Proxy, error) {
+
 	var option log.Option
-	logLevel, _ := cmd.Flags().GetString(logLevelOpt)
-	if logLevel == "info" {
+	if config.LogLevel == "info" {
 		option, _ = log.AllowLevel("info")
 	} else {
 		option, _ = log.AllowLevel("debug")
 	}
 	logger = log.NewFilter(logger, option)
 
-	chainID := args[0]
-	logger.Info("Creating client...", "chainID", chainID)
+	logger.Info("Creating client...", "chainID", config.ChainID)
 
-	witnessesAddrs := []string{}
-	witnessAddrsJoined, _ := cmd.Flags().GetString(witnessAddrsJoinedOpt)
-	if witnessAddrsJoined != "" {
-		witnessesAddrs = strings.Split(witnessAddrsJoined, ",")
+	var witnessesAddrs []string
+	witnessesAddrs = []string{}
+	if config.WitnessAddrsJoined != "" {
+		witnessesAddrs = strings.Split(config.WitnessAddrsJoined, ",")
 	}
-
-	dir, _ := cmd.Flags().GetString(dirOpt)
-	lightDB, err := dbm.NewGoLevelDB("light-client-db", dir)
+	lightDB, err := dbm.NewGoLevelDB("light-client-db", config.Dir)
 	if err != nil {
-		return fmt.Errorf("can't create a db: %w", err)
+		return nil, fmt.Errorf("can't create a db: %w", err)
 	}
 
 	// create a prefixed db on the chainID
-	db := dbm.NewPrefixDB(lightDB, []byte(chainID))
+	db := dbm.NewPrefixDB(lightDB, []byte(config.ChainID))
 
 	defer db.Close()
 
-	primaryAddress := ""
-
-	primaryAddr, _ := cmd.Flags().GetString(primaryAddrOpt)
-
-	if primaryAddr == "" { // check to see if we can start from an existing state
+	if config.PrimaryAddr == "" { // check to see if we can start from an existing state
 		var err error
+		var primaryAddress string
 		primaryAddress, witnessesAddrs, err = checkForExistingProviders(db)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve primary or witness from db: %w", err)
+			return nil, fmt.Errorf("failed to retrieve primary or witness from db: %w", err)
 		}
 		if primaryAddress == "" {
-			return errors.New("no primary address was provided nor found. Please provide a primary (using -p)." +
+			return nil, errors.New("no primary address was provided nor found. Please provide a primary (using -p)." +
 				" Run the command: tendermint light --help for more information")
 		}
+		config.PrimaryAddr = primaryAddress
 	} else {
-		err := saveProviders(db, primaryAddr, witnessAddrsJoined)
+		err := saveProviders(db, config.PrimaryAddr, config.WitnessAddrsJoined)
 		if err != nil {
 			logger.Error("Unable to save primary and or witness addresses", "err", err)
 		}
 	}
 
-	tl, err := cmd.Flags().GetString(trustLevelOpt)
+	trustLevel, err := tmmath.ParseFraction(config.TrustLevel)
 	if err != nil {
-		return err
-	}
-
-	trustLevel, err := tmmath.ParseFraction(tl)
-	if err != nil {
-		return fmt.Errorf("can't parse trust level: %w", err)
+		return nil, fmt.Errorf("can't parse trust level: %w", err)
 	}
 
 	options := []light.Option{
@@ -173,6 +179,81 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			fmt.Println(action)
 			return true
 		}),
+	}
+
+	if config.InsecureSsl {
+		rpctypes.ForceTrustIsrgRootX1()
+	}
+
+	if config.Sequential {
+		options = append(options, light.SequentialVerification())
+	} else {
+		options = append(options, light.SkippingVerification(trustLevel))
+	}
+
+	var c *light.Client
+
+	if config.TrustedHeight > 0 && len(config.TrustedHash) > 0 { // fresh installation
+		c, err = light.NewHTTPClient(
+			context.Background(),
+			config.ChainID,
+			light.TrustOptions{
+				Period: config.TrustingPeriod,
+				Height: config.TrustedHeight,
+				Hash:   config.TrustedHash,
+			},
+			config.PrimaryAddr,
+			witnessesAddrs,
+			dbs.New(lightDB, config.ChainID),
+			options...,
+		)
+	} else { // continue from latest state
+		c, err = light.NewHTTPClientFromTrustedStore(
+			config.ChainID,
+			config.TrustingPeriod,
+			config.PrimaryAddr,
+			witnessesAddrs,
+			dbs.New(lightDB, config.ChainID),
+			options...,
+		)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	tmconfig := tmcfg.DefaultConfig()
+
+	cfg := rpcserver.DefaultConfig()
+	cfg.MaxBodyBytes = tmconfig.RPC.MaxBodyBytes
+	cfg.MaxHeaderBytes = tmconfig.RPC.MaxHeaderBytes
+
+	cfg.MaxOpenConnections = config.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if cfg.WriteTimeout <= tmconfig.RPC.TimeoutBroadcastTxCommit {
+		cfg.WriteTimeout = tmconfig.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
+	return lproxy.NewProxy(c, config.ListenAddr, config.PrimaryAddr, cfg, logger, lrpc.KeyPathFn(MerkleKeyPathFn()))
+
+}
+
+func runProxy(cmd *cobra.Command, args []string) error {
+	// Initialize logger.
+	logLevel, _ := cmd.Flags().GetString(logLevelOpt)
+
+	chainID := args[0]
+
+	witnessAddrsJoined, _ := cmd.Flags().GetString(witnessAddrsJoinedOpt)
+
+	dir, _ := cmd.Flags().GetString(dirOpt)
+
+	primaryAddr, _ := cmd.Flags().GetString(primaryAddrOpt)
+
+	tl, err := cmd.Flags().GetString(trustLevelOpt)
+	if err != nil {
+		return err
 	}
 
 	sequential, err := cmd.Flags().GetBool(sequentialOpt)
@@ -184,17 +265,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if insecureSsl {
-		rpctypes.ForceTrustIsrgRootX1()
-	}
 
-	if sequential {
-		options = append(options, light.SequentialVerification())
-	} else {
-		options = append(options, light.SkippingVerification(trustLevel))
-	}
-
-	var c *light.Client
 	trustedHeight, err := cmd.Flags().GetInt64(trustedHeightOpt)
 	if err != nil {
 		return err
@@ -209,55 +280,30 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if trustedHeight > 0 && len(trustedHash) > 0 { // fresh installation
-		c, err = light.NewHTTPClient(
-			context.Background(),
-			chainID,
-			light.TrustOptions{
-				Period: trustingPeriod,
-				Height: trustedHeight,
-				Hash:   trustedHash,
-			},
-			primaryAddr,
-			witnessesAddrs,
-			dbs.New(lightDB, chainID),
-			options...,
-		)
-	} else { // continue from latest state
-		c, err = light.NewHTTPClientFromTrustedStore(
-			chainID,
-			trustingPeriod,
-			primaryAddr,
-			witnessesAddrs,
-			dbs.New(lightDB, chainID),
-			options...,
-		)
-	}
-	if err != nil {
-		return err
-	}
-
-	config := tmcfg.DefaultConfig()
-
-	cfg := rpcserver.DefaultConfig()
-	cfg.MaxBodyBytes = config.RPC.MaxBodyBytes
-	cfg.MaxHeaderBytes = config.RPC.MaxHeaderBytes
 	maxOpenConnections, err := cmd.Flags().GetInt(maxOpenConnectionsOpt)
 	if err != nil {
 		return err
 	}
 
-	cfg.MaxOpenConnections = maxOpenConnections
-	// If necessary adjust global WriteTimeout to ensure it's greater than
-	// TimeoutBroadcastTxCommit.
-	// See https://github.com/tendermint/tendermint/issues/3435
-	if cfg.WriteTimeout <= config.RPC.TimeoutBroadcastTxCommit {
-		cfg.WriteTimeout = config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-	}
-
 	listenAddr, _ := cmd.Flags().GetString(listenAddrOpt)
 
-	p, err := lproxy.NewProxy(c, listenAddr, primaryAddr, cfg, logger, lrpc.KeyPathFn(MerkleKeyPathFn()))
+	config := ProxyConfig{
+		LogLevel:           logLevel,
+		ChainID:            chainID,
+		WitnessAddrsJoined: witnessAddrsJoined,
+		Dir:                dir,
+		PrimaryAddr:        primaryAddr,
+		TrustLevel:         tl,
+		Sequential:         sequential,
+		InsecureSsl:        insecureSsl,
+		TrustedHeight:      trustedHeight,
+		TrustedHash:        trustedHash,
+		TrustingPeriod:     trustingPeriod,
+		MaxOpenConnections: maxOpenConnections,
+		ListenAddr:         listenAddr,
+	}
+
+	p, err := CreateProxy(&config)
 	if err != nil {
 		return err
 	}
@@ -270,7 +316,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	if err := p.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		logger.Error("proxy ListenAndServe", "err", err)
-		clearProxy(p)
+		ClearProxy(p)
 
 	}
 
