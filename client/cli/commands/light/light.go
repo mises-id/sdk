@@ -88,15 +88,14 @@ only the chainID is required.
 }
 
 func ClearProxy(p *lproxy.Proxy) {
+	logger.Info("Clear Proxy")
 	if p.Listener != nil {
-		logger.Error("proxy close listener")
 		err := p.Listener.Close()
 		if err != nil {
 			logger.Error("proxy close listener fail", err)
 		}
 	}
 	if p.Client != nil && p.Client.IsRunning() {
-		logger.Error("proxy stop client")
 		err := p.Client.Stop()
 		if err != nil {
 			logger.Error("proxy stop client fail", err)

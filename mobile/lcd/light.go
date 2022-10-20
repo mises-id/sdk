@@ -122,12 +122,10 @@ func (lcd *mLCD) SetLogLevel(level int) error {
 }
 
 func (lcd *mLCD) Restart() error {
-	if atomic.CompareAndSwapUint32(&lcd.restarting, 0, 1) {
-		proxy := lcd.proxy
-		if proxy != nil {
-			light.ClearProxy(proxy)
-		}
-
+	proxy := lcd.proxy
+	if proxy != nil {
+		atomic.StoreUint32(&lcd.restarting, 1)
+		light.ClearProxy(proxy)
 	}
 	return nil
 }

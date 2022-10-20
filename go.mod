@@ -28,6 +28,6 @@ replace github.com/cosmos/iavl => github.com/mises-id/iavl v0.17.4-0.20211207035
 
 replace github.com/cosmos/cosmos-sdk => github.com/mises-id/cosmos-sdk v0.44.6-0.20220315093538-763383563639
 
-replace github.com/tendermint/tendermint => github.com/mises-id/tendermint v0.34.15-0.20220725013722-fd06dc4fa7a8
-
+replace github.com/tendermint/tendermint => github.com/mises-id/tendermint v0.34.15-0.20221020080600-91875faffa6e
+//replace github.com/tendermint/tendermint => ../tendermint
 replace github.com/99designs/keyring => github.com/99designs/keyring v1.2.1
