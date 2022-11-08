@@ -197,12 +197,22 @@ func TestSdkRegisterUser(t *testing.T) {
 	)
 	_, app := sdk.NewSdkForApp(mo, appinfo)
 
+	callback := &RegisterUserCallback{}
+	callback.done = make(chan bool)
+	callback.maxCount = 1
+	app.SetListener(callback)
+
 	newUser := CreateRandomUser()
 
-	err := app.RunSync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000))
+	fmt.Printf("Step - 1 \n")
+	cmd := app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000)
+	err := app.RunSync(cmd)
 	assert.NoError(t, err)
-	err1 := app.RunSync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000))
+	fmt.Printf("Step - 2 \n")
+	cmd1 := app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000)
+	err1 := app.RunAsync(cmd1, false)
 	assert.NoError(t, err1)
+	callback.wait()
 
 }
 
@@ -371,7 +381,7 @@ func TestSdkEventStreaming(t *testing.T) {
 		ChainID:    "test",
 		Debug:      true,
 		PassPhrase: SimplePassWord,
-		RpcURI:     "http://mises.ihuaj.com:26657",
+		RpcURI:     "tcp://127.0.0.1:26657",
 	}
 
 	appinfo := types.NewMisesAppInfoReadonly(

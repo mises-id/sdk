@@ -17,6 +17,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/types"
 	bankcodec "github.com/cosmos/cosmos-sdk/x/bank/types"
+	feegrantcodec "github.com/cosmos/cosmos-sdk/x/feegrant"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -174,6 +175,7 @@ func (app *MisesApp) Init(info types.MAppInfo, options types.MSdkOption) error {
 	bankcodec.RegisterInterfaces(interfaceRegistry)
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	misestypes.RegisterInterfaces(interfaceRegistry)
+	feegrantcodec.RegisterInterfaces(interfaceRegistry)
 
 	codec := codec.NewProtoCodec(interfaceRegistry)
 	txCfg := tx.NewTxConfig(codec, tx.DefaultSignModes)
@@ -266,12 +268,7 @@ func (app *MisesApp) Init(info types.MAppInfo, options types.MSdkOption) error {
 }
 
 func (app *MisesApp) asynWaitCmd(cmd types.MisesAppCmd, err error) {
-	if cmd.TxID() == "" {
-		if app.listener != nil {
-			app.listener.OnFailed(cmd, fmt.Errorf("no txid"))
-		}
-		return
-	}
+
 	if failCount, ok := app.failedTxCounter[cmd.TxID()]; ok {
 		//do something here
 		if failCount > 10 {
@@ -360,14 +357,16 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		if err != nil {
 			return err
 		}
-		if app.listener != nil {
+		if tx != nil {
 			cmd.SetTxID(tx.TxHash)
-			app.listener.OnTxGenerated(cmd)
-		}
-		if cmd.WaitTx() {
-			err = misesid.PollTxSync(app.clientCtx, tx)
-			if err != nil {
-				return err
+			if app.listener != nil {
+				app.listener.OnTxGenerated(cmd)
+			}
+			if cmd.WaitTx() {
+				err = misesid.PollTxSync(app.clientCtx, tx)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -378,6 +377,12 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 	if cmdapp, ok := cmd.(*RegisterUserCmd); ok {
 		if err := misesid.CheckAppFeeGrant(app.clientCtx, app.MisesID(), cmdapp.MisesUID()); err != nil {
 			tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
+		} else {
+			//no tx generated force success
+			if app.listener != nil && cmd.TxID() == "" {
+				app.listener.OnSucceed(cmd)
+			}
+			return nil
 		}
 	} else if cmdapp, ok := cmd.(*FaucetCmd); ok {
 		tx, err = misesid.Transfer(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.CoinUMIS())
@@ -389,8 +394,8 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 	}
 
 	if tx != nil {
+		cmd.SetTxID(tx.TxHash)
 		if app.listener != nil {
-			cmd.SetTxID(tx.TxHash)
 			app.listener.OnTxGenerated(cmd)
 		}
 		if cmd.WaitTx() {
@@ -399,6 +404,9 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 				return err
 			}
 		}
+	}
+	if cmd.TxID() == "" {
+		return fmt.Errorf("no txid")
 	}
 	return nil
 }
