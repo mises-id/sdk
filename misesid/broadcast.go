@@ -21,6 +21,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/feegrant"
 	"github.com/mises-id/mises-tm/x/misestm/types"
 	multibase "github.com/multiformats/go-multibase"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type SeqInfo struct {
@@ -74,7 +76,7 @@ func PollTx(clientCtx client.Context, txHash string) (*ctypes.ResultTx, error) {
 	return node.Tx(context.Background(), hash, true)
 }
 
-func StarSeqGenerator(clientCtx client.Context) (*SeqChan, error) {
+func StarSeqGenerator(clientCtx client.Context, logger log.Logger) (*SeqChan, error) {
 
 	seqChan := make(chan SeqInfo, 1)
 	cmdChan := make(chan int, 1)
@@ -96,11 +98,13 @@ func StarSeqGenerator(clientCtx client.Context) (*SeqChan, error) {
 		for {
 			if seq == 0 {
 				var err error
+				logger.Info("reset account sequence")
 				num, seq, err = ar.GetAccountNumberSequence(clientCtx, keyaddr)
 				if err != nil {
 					time.Sleep(2 * time.Second)
 					continue
 				}
+				logger.Info(fmt.Sprintf("new account sequence %v", seq))
 			}
 
 			seqChan <- SeqInfo{nextNum: num, nextSeq: seq}
@@ -177,7 +181,6 @@ func broadcastTx(clientCtx client.Context, seqChan *SeqChan, txf tx.Factory, msg
 	if err != nil {
 		return nil, err
 	}
-
 	//types.Logger.Error(fmt.Sprintf("BroadcastTx start with seq %v", txf.Sequence()))
 
 	res, err := clientCtx.BroadcastTx(txBytes)
@@ -224,6 +227,44 @@ func CheckDid(clientCtx client.Context, misesID string) error {
 
 	return nil
 }
+
+func CheckAppFeeGrant(clientCtx client.Context, misesAppID string, misesID string) error {
+
+	node, err := clientCtx.GetNode()
+	if err != nil {
+		return err
+	}
+
+	appAddr, _, err := types.AddrFromDid(misesAppID)
+	if err != nil {
+		return err
+	}
+
+	userAddr, _, err := types.AddrFromDid(misesID)
+	if err != nil {
+		return err
+	}
+
+	query := feegrant.QueryAllowanceRequest{
+		Granter: appAddr.String(),
+		Grantee: userAddr.String(),
+	}
+	queryBytes, err := query.Marshal()
+	if err != nil {
+		return err
+	}
+	res, err := node.ABCIQuery(context.Background(), "/cosmos.feegrant.v1beta1.Query/Allowance", queryBytes)
+	if err != nil {
+		return err
+	}
+
+	if res.Response.Code != 0 {
+		return fmt.Errorf("query did fail [" + misesID + "] ")
+	}
+
+	return nil
+}
+
 func CreateDid(clientCtx client.Context, seqChan *SeqChan, pubKeyHex string, misesID string) (*sdk.TxResponse, error) {
 	clientCtx, err := prepareSigner(clientCtx)
 	if err != nil {

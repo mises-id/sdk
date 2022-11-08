@@ -230,7 +230,7 @@ func (app *MisesApp) Init(info types.MAppInfo, options types.MSdkOption) error {
 	app.appDid = types.MisesAppIDPrefix + key.GetAddress().String()
 	app.info = info
 
-	if app.seqChan, err = misesid.StarSeqGenerator(app.clientCtx); err != nil {
+	if app.seqChan, err = misesid.StarSeqGenerator(app.clientCtx, logger); err != nil {
 		return err
 	}
 
@@ -376,7 +376,9 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 	var tx *sdk.TxResponse = nil
 	var err error
 	if cmdapp, ok := cmd.(*RegisterUserCmd); ok {
-		tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
+		if err := misesid.CheckAppFeeGrant(app.clientCtx, app.MisesID(), cmdapp.MisesUID()); err != nil {
+			tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
+		}
 	} else if cmdapp, ok := cmd.(*FaucetCmd); ok {
 		tx, err = misesid.Transfer(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.CoinUMIS())
 	} else {
@@ -386,14 +388,16 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		return err
 	}
 
-	if app.listener != nil {
-		cmd.SetTxID(tx.TxHash)
-		app.listener.OnTxGenerated(cmd)
-	}
-	if cmd.WaitTx() {
-		err = misesid.PollTxSync(app.clientCtx, tx)
-		if err != nil {
-			return err
+	if tx != nil {
+		if app.listener != nil {
+			cmd.SetTxID(tx.TxHash)
+			app.listener.OnTxGenerated(cmd)
+		}
+		if cmd.WaitTx() {
+			err = misesid.PollTxSync(app.clientCtx, tx)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

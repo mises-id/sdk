@@ -201,6 +201,8 @@ func TestSdkRegisterUser(t *testing.T) {
 
 	err := app.RunSync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000))
 	assert.NoError(t, err)
+	err1 := app.RunSync(app.NewRegisterUserCmd(newUser.MisesID(), newUser.Signer().PubKey(), 100000))
+	assert.NoError(t, err1)
 
 }
 

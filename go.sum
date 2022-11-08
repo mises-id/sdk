@@ -675,8 +675,8 @@ github.com/mises-id/iavl v0.17.4-0.20211207035003-f9d26e6150db h1:7if9aLADO/xbrq
 github.com/mises-id/iavl v0.17.4-0.20211207035003-f9d26e6150db/go.mod h1:5ZbIMs6kY4+RfVjLjOJa6qcga2vsm4Orb/OUOmpdl6I=
 github.com/mises-id/mises-tm v0.0.0-20220303064252-ef3c1ed6ee27 h1:i7i9Dr+EBf/MtroFdgl1yt8xNYPPRWg+njtcZnktaB0=
 github.com/mises-id/mises-tm v0.0.0-20220303064252-ef3c1ed6ee27/go.mod h1:maeY2/FsDxFGNKCyt3XnP1fi5ygJNMUGIr3v0PQ6z0w=
-github.com/mises-id/tendermint v0.34.15-0.20220725013722-fd06dc4fa7a8 h1:kf1t5lb0RX2PdMinnwC2poYeqPtr+sQjBTpHLUWzwAw=
-github.com/mises-id/tendermint v0.34.15-0.20220725013722-fd06dc4fa7a8/go.mod h1:n0G22GynfeXTYbrn2IeLeB+oqsAe6R6jl4vZxZ1Y8F4=
+github.com/mises-id/tendermint v0.34.15-0.20221020080600-91875faffa6e h1:nGPq/eokx5C1BZF5kcGJMabZD11huMlr18r9ipZ8kIQ=
+github.com/mises-id/tendermint v0.34.15-0.20221020080600-91875faffa6e/go.mod h1:n0G22GynfeXTYbrn2IeLeB+oqsAe6R6jl4vZxZ1Y8F4=
 github.com/mises-id/tm-db v0.6.5-0.20210822095222-e1ff1e0dc734 h1:3cqNcdA/GpkZu+5e9XoQJYILiqGUXWVJ4luVCECBB9c=
 github.com/mises-id/tm-db v0.6.5-0.20210822095222-e1ff1e0dc734/go.mod h1:ZOy4GaBR9dW7Com3PfPRaVP75ktxRPXw9Lm72I78PZE=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
@@ -1120,7 +1120,6 @@ golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5/go.mod h1:3xt1FjdF8hUf6vQPI
 golang.org/x/lint v0.0.0-20210508222113-6edffad5e616/go.mod h1:3xt1FjdF8hUf6vQPIChWIBhFzV8gjjsPE/fR3IyQdNY=
 golang.org/x/mobile v0.0.0-20190312151609-d3739f865fa6/go.mod h1:z+o9i4GpDbdi3rU15maQ/Ox0txvL9dWGYEHz965HBQE=
 golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028/go.mod h1:E/iHnbuqvinMTCcRqshq8CkpyQDoeVncDDYHnLhea+o=
-golang.org/x/mobile v0.0.0-20200801112145-973feb4309de h1:OVJ6QQUBAesB8CZijKDSsXX7xYVtUhrkY0gwMfbi4p4=
 golang.org/x/mobile v0.0.0-20200801112145-973feb4309de/go.mod h1:skQtrUTUwhdJvXM/2KKJzY8pDgNr9I/FOMqDVRPBUS4=
 golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e/go.mod h1:mXi4GBBbnImb6dmsKGUJ2LatrhH/nqhxcFungHvyanc=
 golang.org/x/mod v0.1.0/go.mod h1:0QHyrYULN0/3qlju5TqG8bIK38QM8yzMo5ekMj3DlcY=
