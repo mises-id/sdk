@@ -268,7 +268,13 @@ func (app *MisesApp) Init(info types.MAppInfo, options types.MSdkOption) error {
 }
 
 func (app *MisesApp) asynWaitCmd(cmd types.MisesAppCmd, err error) {
-
+	//no tx generated force success
+	if err == nil && cmd.TxID() == "" {
+		if app.listener != nil {
+			app.listener.OnSucceed(cmd)
+		}
+		return
+	}
 	if failCount, ok := app.failedTxCounter[cmd.TxID()]; ok {
 		//do something here
 		if failCount > 10 {
@@ -313,6 +319,7 @@ func (app *MisesApp) startCmdRoutine() {
 						app.listener.OnSucceed(cmd)
 					}
 				} else {
+
 					app.asynWaitCmd(cmd, nil)
 				}
 
@@ -378,10 +385,6 @@ func (app *MisesApp) RunSync(cmd types.MisesAppCmd) error {
 		if err := misesid.CheckAppFeeGrant(app.clientCtx, app.MisesID(), cmdapp.MisesUID()); err != nil {
 			tx, err = misesid.UpdateAppFeeGrant(app.clientCtx, app.seqChan, app.MisesID(), cmdapp.MisesUID(), cmdapp.FeeGrantedPerDay())
 		} else {
-			//no tx generated force success
-			if app.listener != nil && cmd.TxID() == "" {
-				app.listener.OnSucceed(cmd)
-			}
 			return nil
 		}
 	} else if cmdapp, ok := cmd.(*FaucetCmd); ok {
