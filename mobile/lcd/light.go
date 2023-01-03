@@ -12,8 +12,6 @@ import (
 
 	tmcfg "github.com/tendermint/tendermint/config"
 
-	lproxy "github.com/tendermint/tendermint/light/proxy"
-
 	"github.com/mises-id/sdk/client/cli/commands/light"
 	"github.com/mises-id/sdk/types"
 )
@@ -28,7 +26,7 @@ type mLCD struct {
 	trustHash        string
 	insecureSsl      bool
 	initThreadID     uint64
-	proxy            *lproxy.Proxy
+	proxyState       *light.ProxyState
 	restarting       uint32 // atomic
 }
 
@@ -83,15 +81,15 @@ func (lcd *mLCD) serveImpl(listen string) error {
 		ListenAddr:         listen,
 	}
 
-	p, err := light.CreateProxy(&config)
+	ps, err := light.CreateProxy(&config)
 	if err != nil {
 		return err
 	}
-	lcd.proxy = p
+	lcd.proxyState = ps
 	atomic.StoreUint32(&lcd.restarting, 0)
 
-	if err := p.ListenAndServe(); err != http.ErrServerClosed {
-		light.ClearProxy(p)
+	if err := ps.Proxy.ListenAndServe(); err != http.ErrServerClosed {
+		light.ClearProxy(ps)
 	}
 
 	return nil
@@ -102,7 +100,7 @@ func (lcd *mLCD) Serve(listen string, delegator MLightNodeDelegator) error {
 	go func() {
 		for {
 			lcd.serveImpl(listen)
-			lcd.proxy = nil
+			lcd.proxyState = nil
 			if atomic.LoadUint32(&lcd.restarting) == 1 {
 				//restarting
 				time.Sleep(5 * time.Second)
@@ -122,10 +120,10 @@ func (lcd *mLCD) SetLogLevel(level int) error {
 }
 
 func (lcd *mLCD) Restart() error {
-	proxy := lcd.proxy
-	if proxy != nil {
+	proxyState := lcd.proxyState
+	if proxyState != nil {
 		atomic.StoreUint32(&lcd.restarting, 1)
-		light.ClearProxy(proxy)
+		light.ClearProxy(proxyState)
 	}
 	return nil
 }

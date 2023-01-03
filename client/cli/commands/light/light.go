@@ -87,23 +87,6 @@ only the chainID is required.
 	return cmd
 }
 
-func ClearProxy(p *lproxy.Proxy) {
-	logger.Info("Clear Proxy")
-	if p.Listener != nil {
-		err := p.Listener.Close()
-		if err != nil {
-			logger.Error("proxy close listener fail", err)
-		}
-	}
-	if p.Client != nil && p.Client.IsRunning() {
-		err := p.Client.Stop()
-		if err != nil {
-			logger.Error("proxy stop client fail", err)
-		}
-
-	}
-}
-
 type ProxyConfig struct {
 	PrimaryAddr        string
 	WitnessAddrsJoined string
@@ -121,7 +104,37 @@ type ProxyConfig struct {
 	InsecureSsl bool
 }
 
-func CreateProxy(config *ProxyConfig) (*lproxy.Proxy, error) {
+type ProxyState struct {
+	Proxy *lproxy.Proxy
+	DB    *dbm.PrefixDB
+}
+
+func ClearProxy(ps *ProxyState) {
+	logger.Info("Clear Proxy")
+	if ps.Proxy != nil {
+		p := ps.Proxy
+		if p.Listener != nil {
+			err := p.Listener.Close()
+			if err != nil {
+				logger.Error("proxy close listener fail", err)
+			}
+		}
+		if p.Client != nil && p.Client.IsRunning() {
+			err := p.Client.Stop()
+			if err != nil {
+				logger.Error("proxy stop client fail", err)
+			}
+
+		}
+	}
+
+	if ps.DB != nil {
+		defer ps.DB.Close()
+	}
+
+}
+
+func CreateProxy(config *ProxyConfig) (*ProxyState, error) {
 
 	var option log.Option
 	if config.LogLevel == "info" {
@@ -138,6 +151,12 @@ func CreateProxy(config *ProxyConfig) (*lproxy.Proxy, error) {
 	if config.WitnessAddrsJoined != "" {
 		witnessesAddrs = strings.Split(config.WitnessAddrsJoined, ",")
 	}
+
+	trustLevel, err := tmmath.ParseFraction(config.TrustLevel)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse trust level: %w", err)
+	}
+
 	lightDB, err := dbm.NewGoLevelDB("light-client-db", config.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("can't create a db: %w", err)
@@ -146,16 +165,16 @@ func CreateProxy(config *ProxyConfig) (*lproxy.Proxy, error) {
 	// create a prefixed db on the chainID
 	db := dbm.NewPrefixDB(lightDB, []byte(config.ChainID))
 
-	defer db.Close()
-
 	if config.PrimaryAddr == "" { // check to see if we can start from an existing state
 		var err error
 		var primaryAddress string
 		primaryAddress, witnessesAddrs, err = checkForExistingProviders(db)
 		if err != nil {
+			defer db.Close()
 			return nil, fmt.Errorf("failed to retrieve primary or witness from db: %w", err)
 		}
 		if primaryAddress == "" {
+			defer db.Close()
 			return nil, errors.New("no primary address was provided nor found. Please provide a primary (using -p)." +
 				" Run the command: tendermint light --help for more information")
 		}
@@ -165,11 +184,6 @@ func CreateProxy(config *ProxyConfig) (*lproxy.Proxy, error) {
 		if err != nil {
 			logger.Error("Unable to save primary and or witness addresses", "err", err)
 		}
-	}
-
-	trustLevel, err := tmmath.ParseFraction(config.TrustLevel)
-	if err != nil {
-		return nil, fmt.Errorf("can't parse trust level: %w", err)
 	}
 
 	options := []light.Option{
@@ -217,6 +231,7 @@ func CreateProxy(config *ProxyConfig) (*lproxy.Proxy, error) {
 		)
 	}
 	if err != nil {
+		defer db.Close()
 		return nil, err
 	}
 
@@ -234,8 +249,17 @@ func CreateProxy(config *ProxyConfig) (*lproxy.Proxy, error) {
 		cfg.WriteTimeout = tmconfig.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
-	return lproxy.NewProxy(c, config.ListenAddr, config.PrimaryAddr, cfg, logger, lrpc.KeyPathFn(MerkleKeyPathFn()))
+	lp, err := lproxy.NewProxy(c, config.ListenAddr, config.PrimaryAddr, cfg, logger, lrpc.KeyPathFn(MerkleKeyPathFn()))
 
+	if err != nil {
+		defer db.Close()
+		return nil, err
+	}
+
+	return &ProxyState{
+		Proxy: lp,
+		DB:    db,
+	}, nil
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
@@ -302,7 +326,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		ListenAddr:         listenAddr,
 	}
 
-	p, err := CreateProxy(&config)
+	ps, err := CreateProxy(&config)
 	if err != nil {
 		return err
 	}
@@ -312,10 +336,10 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	})
 
 	logger.Info("Starting proxy...", "laddr", listenAddr)
-	if err := p.ListenAndServe(); err != http.ErrServerClosed {
+	if err := ps.Proxy.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		logger.Error("proxy ListenAndServe", "err", err)
-		ClearProxy(p)
+		ClearProxy(ps)
 
 	}
 
