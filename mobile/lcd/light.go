@@ -99,13 +99,18 @@ func (lcd *mLCD) Serve(listen string, delegator MLightNodeDelegator) error {
 
 	go func() {
 		for {
-			lcd.serveImpl(listen)
+			err := lcd.serveImpl(listen)
 			lcd.proxyState = nil
 			if atomic.LoadUint32(&lcd.restarting) == 1 {
 				//restarting
 				time.Sleep(5 * time.Second)
 			} else {
-				delegator.OnError()
+				if err != nil {
+					delegator.OnError(err.Error())
+				} else {
+					delegator.OnError("")
+				}
+
 				break
 			}
 		}

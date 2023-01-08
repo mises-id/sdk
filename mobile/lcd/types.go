@@ -11,5 +11,5 @@ type MLightNode interface {
 }
 
 type MLightNodeDelegator interface {
-	OnError()
+	OnError(reason string)
 }
